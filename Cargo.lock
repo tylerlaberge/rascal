@@ -1,0 +1,23 @@
+[root]
+name = "rascal"
+version = "1.0.0"
+dependencies = [
+ "itertools 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "either"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "itertools"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "either 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[metadata]
+"checksum either 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "cbee135e9245416869bf52bd6ccc9b59e2482651510784e089b874272f02a252"
+"checksum itertools 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7cc0332eecf9269cc5e084ec9993e4d087776733cfb286cd77514030fee2716c"

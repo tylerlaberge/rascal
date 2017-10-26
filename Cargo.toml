@@ -1,0 +1,7 @@
+[package]
+name = "rascal"
+version = "1.0.0"
+authors = ["tylerlaberge <tylerlaberge@gmail.com>"]
+
+[dependencies]
+itertools = "0.7.1"
