@@ -4,19 +4,20 @@ use rascal::lexer;
 use rascal::parser;
 use rascal::interpreter;
 
-use std::io;
-use std::io::Write;
-
 fn main() {
-    loop {
-        print!("calc>");
-        io::stdout().flush().expect("i/o error");
-        let mut input = String::new();
-        match io::stdin().read_line(&mut input) {
-            Ok(_)      => interpret(input),
-            Err(error) => println!("error: {}", error),
-        }
-    }
+    let input = "
+BEGIN
+    BEGIN
+        number := 2;
+        a := number;
+        b := 10 * a + 10 * number / 4;
+        c := a - - b
+    END;
+    x := 11;
+END.";
+    println!("{}", input);
+
+    interpret(String::from(input));
 }
 
 fn interpret(input: String) {
@@ -26,7 +27,7 @@ fn interpret(input: String) {
     let mut interpreter = interpreter::Interpreter::new(parser);
 
     match interpreter.interpret() {
-        Ok(())     => (),
+        Ok(())     => println!("{}", interpreter),
         Err(e)     => println!("{}", e)
     }
 }

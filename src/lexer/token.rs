@@ -1,5 +1,11 @@
 #[derive(Debug)]
 pub enum Token {
+    BEGIN,
+    END,
+    DOT,
+    SEMI,
+    ASSIGN,
+    ID(String),
     INTEGER(u32),
     PLUS,
     MINUS,

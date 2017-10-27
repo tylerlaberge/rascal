@@ -25,47 +25,77 @@ impl<'a> Lexer<'a> {
 
     fn init(&mut self) {
         loop {
-            match self.compute_next_token() {
-                Token::EOF => {
+            match self.lex() {
+                Ok(Token::EOF) => {
                     self.token_cache.push(Token::EOF);
                     break;
                 }
-                token      => self.token_cache.push(token)
+                Ok(token)      => self.token_cache.push(token),
+                Err(e)         => panic!(e)
             }
         }
     }
 
-    fn compute_next_token(&mut self) -> Token {
-        return match self.source.next() {
-            Some(character) if character.is_whitespace() => self.compute_next_token(),
-            Some(character)                              => self.lex(character),
-            None                                         => Token::EOF
-        };
-    }
-
-    fn integer(&mut self) -> u32 {
-        let start_int: String = self.source.current_char().expect("Internal Lexer Error").to_string();
-
-        return self.source.by_ref()
+    fn integer(&mut self) -> Result<Token, String> {
+        let start_int: String = match self.source.current_char() {
+            Some(c) if c.is_digit(10) => Ok(c),
+            _                         => Err("Internal Lexer Error")
+        }?.to_string();
+        let final_int = self.source.by_ref()
             .peeking_take_while(| c: &char | c.is_digit(10))
-            .fold(start_int,| mut acc: String, num: char | {
-                acc.push(num);
+            .fold(start_int,| mut acc: String, next_int: char | {
+                acc.push(next_int);
                 return acc;
             })
             .parse::<u32>()
-            .expect("Internal Lexer Error");
+            .or(Err("Internal Lexer Error"))?;
+
+        return Ok(Token::INTEGER(final_int));
     }
 
-    fn lex(&mut self, character: char) -> Token {
-        return match character {
-            x if x.is_digit(10) => Token::INTEGER(self.integer()),
-            '+'                 => Token::PLUS,
-            '-'                 => Token::MINUS,
-            '*'                 => Token::MULTIPLY,
-            '/'                 => Token::DIVIDE,
-            '('                 => Token::LPAREN,
-            ')'                 => Token::RPAREN,
-            _                   => panic!("Unknown Token: '{}'", character)
+    fn id(&mut self) -> Result<Token, String> {
+        let start_id: String = match self.source.current_char() {
+            Some(c) if c.is_alphabetic() => Ok(c),
+            _                            => Err("Internal Lexer Error")
+        }?.to_string();
+        let final_id: String = self.source.by_ref()
+            .peeking_take_while(| c: &char | c.is_alphanumeric())
+            .fold(start_id, | mut acc: String, next_id: char | {
+                acc.push(next_id);
+                return acc;
+            });
+
+        return match final_id.as_str() {
+            "BEGIN" => Ok(Token::BEGIN),
+            "END"   => Ok(Token::END),
+            id      => Ok(Token::ID(id.to_string()))
+        };
+    }
+
+    fn assign(&mut self) -> Result<Token, String> {
+        return match (self.source.current_char(), self.source.next()) {
+            (Some(':'), Some('=')) => Ok(Token::ASSIGN),
+            (Some(':'), Some(c))   => Err(format!("Expected '=', found {}", c)),
+            _                      => Err(String::from("Internal Lexer Error"))
+        };
+    }
+
+    fn lex(&mut self) -> Result<Token, String> {
+        return match self.source.next() {
+            Some(character) if character.is_whitespace() => self.lex(),
+            Some(character) if character.is_digit(10)    => self.integer(),
+            Some(character) if character.is_alphabetic() => self.id(),
+            Some(':')                                    => self.assign(),
+            Some('.')                                    => Ok(Token::DOT),
+            Some(';')                                    => Ok(Token::SEMI),
+            Some('+')                                    => Ok(Token::PLUS),
+            Some('-')                                    => Ok(Token::MINUS),
+            Some('*')                                    => Ok(Token::MULTIPLY),
+            Some('/')                                    => Ok(Token::DIVIDE),
+            Some('(')                                    => Ok(Token::LPAREN),
+            Some(')')                                    => Ok(Token::RPAREN),
+            None                                         => Ok(Token::EOF),
+            Some(character)                              => Err(format!("Unknown Token: '{}'", character)),
         }
     }
 }

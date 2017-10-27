@@ -1,20 +1,37 @@
 use parser::ast::Expr;
 use parser::ast::Operator;
+use parser::ast::Assignment;
+use parser::ast::Variable;
 use parser::Parser;
 use super::node_visitor::NodeVisitor;
 
+use std::collections::HashMap;
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt;
+
 pub struct Interpreter<'a> {
     parser: Parser<'a>,
+    symbol_table: HashMap<String, i32>
+}
+
+impl<'a> Display for Interpreter<'a> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        return write!(f, "{:?}", self.symbol_table);
+    }
 }
 
 impl<'a> Interpreter<'a> {
     pub fn new(parser: Parser<'a>) -> Interpreter<'a> {
-        return Interpreter { parser };
+        return Interpreter {
+            parser,
+            symbol_table: HashMap::new()
+        };
     }
 
     pub fn interpret(&mut self) -> Result<(), String> {
         return match self.parser.parse() {
-            Ok(ast) => self.visit(ast),
+            Ok(program) => self.visit_program(program),
             Err(e)  => Err(e)
         }
     }
@@ -44,6 +61,26 @@ impl<'a> NodeVisitor for Interpreter<'a> {
         return match expr {
             Expr::Num(i) => Ok(i as i32),
             _            => Err(String::from("Interpreter Error"))
+        }
+    }
+
+    fn visit_assignment(&mut self, node: Assignment) -> Result<(), String> {
+        match node {
+            Assignment::Assign(Variable::Var(name), expression) => {
+                let val = self.visit_expr(expression)?;
+                self.symbol_table.insert(name, val);
+            }
+        }
+
+        return Ok(());
+    }
+    fn visit_variable(&mut self, node: Variable) -> Result<i32, String> {
+        return match node {
+            Variable::Var(name) =>
+                match self.symbol_table.get(&name) {
+                    Some(&val) => Ok(val),
+                    None       => Err(String::from(format!("Unknown variable: {}", name)))
+                }
         }
     }
 }
