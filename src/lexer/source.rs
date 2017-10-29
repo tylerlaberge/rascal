@@ -20,6 +20,10 @@ impl<'a> Source<'a> {
     pub fn current_char(&self) -> Option<char> {
         return self.current_char;
     }
+
+    pub fn peek(&mut self) -> Option<&char> {
+        return self.chars.peek();
+    }
 }
 
 impl<'a> Iterator for Source<'a> {
@@ -36,11 +40,11 @@ impl<'a> PeekingNext for Source<'a> {
     fn peeking_next<F>(&mut self, accept: F) -> Option<Self::Item>
         where F: FnOnce(&Self::Item) -> bool
     {
-        let pass = match self.chars.peek() {
+        let pass = match self.peek() {
             Some(c) if accept(c) => true,
-            _ => false
+            _                    => false
         };
 
-        return if pass { self.chars.next() } else { None };
+        return if pass { self.next() } else { None };
     }
 }

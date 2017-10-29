@@ -36,11 +36,12 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn integer(&mut self) -> Result<Token, String> {
+    fn number(&mut self) -> Result<u32, String> {
         let start_int: String = match self.source.current_char() {
             Some(c) if c.is_digit(10) => Ok(c),
-            _                         => Err("Internal Lexer Error")
+            _                         => Err("Internal Lexer Error, expected number")
         }?.to_string();
+
         let final_int = self.source.by_ref()
             .peeking_take_while(| c: &char | c.is_digit(10))
             .fold(start_int,| mut acc: String, next_int: char | {
@@ -48,9 +49,34 @@ impl<'a> Lexer<'a> {
                 return acc;
             })
             .parse::<u32>()
-            .or(Err("Internal Lexer Error"))?;
+            .or(Err("Internal Lexer Error, failed to parse integer"))?;
 
-        return Ok(Token::INTEGER(final_int));
+        return Ok(final_int);
+    }
+
+    fn integer(&mut self) -> Result<Token, String> {
+        let integer = self.number()?;
+
+        if let Some(&'.') = self.source.peek() {
+            self.source.next(); // Eat the period
+
+            let decimal = match self.source.next() {
+                Some(c) if c.is_digit(10) => self.number(),
+                _                         => Err(String::from("Expected floating point"))
+            }?;
+
+            let mut string_real: String = integer.to_string();
+            string_real.push('.');
+            string_real.push_str(decimal.to_string().as_str());
+
+            let real = string_real.parse::<f32>().or(Err("Internal Lexer Error: Failed to parse float"))?;
+
+            return Ok(Token::REAL_CONST(real));
+        }
+
+        else {
+            return Ok(Token::INTEGER_CONST(integer));
+        }
     }
 
     fn id(&mut self) -> Result<Token, String> {
@@ -68,6 +94,7 @@ impl<'a> Lexer<'a> {
         return match final_id.as_str() {
             "BEGIN" => Ok(Token::BEGIN),
             "END"   => Ok(Token::END),
+            "div"   => Ok(Token::INTEGER_DIV),
             id      => Ok(Token::ID(id.to_string()))
         };
     }
@@ -91,7 +118,7 @@ impl<'a> Lexer<'a> {
             Some('+')                                    => Ok(Token::PLUS),
             Some('-')                                    => Ok(Token::MINUS),
             Some('*')                                    => Ok(Token::MULTIPLY),
-            Some('/')                                    => Ok(Token::DIVIDE),
+            Some('/')                                    => Ok(Token::FLOAT_DIV),
             Some('(')                                    => Ok(Token::LPAREN),
             Some(')')                                    => Ok(Token::RPAREN),
             None                                         => Ok(Token::EOF),

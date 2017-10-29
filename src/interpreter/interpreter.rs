@@ -12,7 +12,7 @@ use std::fmt;
 
 pub struct Interpreter<'a> {
     parser: Parser<'a>,
-    symbol_table: HashMap<String, i32>
+    symbol_table: HashMap<String, f32>
 }
 
 impl<'a> Display for Interpreter<'a> {
@@ -39,7 +39,7 @@ impl<'a> Interpreter<'a> {
 
 impl<'a> NodeVisitor for Interpreter<'a> {
 
-    fn visit_unaryop(&mut self, expr: Expr) -> Result<i32, String> {
+    fn visit_unaryop(&mut self, expr: Expr) -> Result<f32, String> {
         return match expr {
             Expr::UnaryOp(Operator::Plus, factor)  => Ok(self.visit_expr(*factor)?),
             Expr::UnaryOp(Operator::Minus, factor) => Ok(-self.visit_expr(*factor)?),
@@ -47,19 +47,20 @@ impl<'a> NodeVisitor for Interpreter<'a> {
         }
     }
 
-    fn visit_binop(&mut self, expr: Expr) -> Result<i32, String> {
+    fn visit_binop(&mut self, expr: Expr) -> Result<f32, String> {
         return match expr {
-            Expr::BinOp(left, Operator::Plus, right)     => Ok(self.visit_expr(*left)? + self.visit_expr(*right)?),
-            Expr::BinOp(left, Operator::Minus, right)    => Ok(self.visit_expr(*left)? - self.visit_expr(*right)?),
-            Expr::BinOp(left, Operator::Multiply, right) => Ok(self.visit_expr(*left)? * self.visit_expr(*right)?),
-            Expr::BinOp(left, Operator::Divide, right)   => Ok(self.visit_expr(*left)? / self.visit_expr(*right)?),
-            _                                            => Err(String::from("Interpreter Error"))
+            Expr::BinOp(left, Operator::Plus, right)          => Ok(self.visit_expr(*left)? + self.visit_expr(*right)?),
+            Expr::BinOp(left, Operator::Minus, right)         => Ok(self.visit_expr(*left)? - self.visit_expr(*right)?),
+            Expr::BinOp(left, Operator::Multiply, right)      => Ok(self.visit_expr(*left)? * self.visit_expr(*right)?),
+            Expr::BinOp(left, Operator::FloatDivide, right)   => Ok(self.visit_expr(*left)? / self.visit_expr(*right)?),
+            Expr::BinOp(left, Operator::IntegerDivide, right) => Ok((self.visit_expr(*left)? / self.visit_expr(*right)?).round()),
+            _                                                 => Err(String::from("Interpreter Error"))
         }
     }
 
-    fn visit_num(&mut self, expr: Expr) -> Result<i32, String> {
+    fn visit_num(&mut self, expr: Expr) -> Result<f32, String> {
         return match expr {
-            Expr::Num(i) => Ok(i as i32),
+            Expr::Num(i) => Ok(i),
             _            => Err(String::from("Interpreter Error"))
         }
     }
@@ -74,7 +75,7 @@ impl<'a> NodeVisitor for Interpreter<'a> {
 
         return Ok(());
     }
-    fn visit_variable(&mut self, node: Variable) -> Result<i32, String> {
+    fn visit_variable(&mut self, node: Variable) -> Result<f32, String> {
         return match node {
             Variable::Var(name) =>
                 match self.symbol_table.get(&name) {

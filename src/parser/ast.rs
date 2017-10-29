@@ -32,7 +32,7 @@ pub enum Variable {
 
 #[derive(Debug)]
 pub enum Expr {
-    Num(u32),
+    Num(f32),
     BinOp(Box<Expr>, Operator, Box<Expr>),
     UnaryOp(Operator, Box<Expr>),
     Variable(Variable)
@@ -43,5 +43,6 @@ pub enum Operator {
     Plus,
     Minus,
     Multiply,
-    Divide
+    IntegerDivide,
+    FloatDivide
 }

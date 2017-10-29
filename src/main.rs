@@ -14,6 +14,10 @@ BEGIN
         c := a - - b
     END;
     x := 11;
+    foo := x div 5;
+    bar := x / 5;
+    baz := 5.5;
+    test := foo * bar div baz
 END.";
     println!("{}", input);
 

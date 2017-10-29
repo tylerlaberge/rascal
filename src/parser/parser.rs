@@ -17,8 +17,8 @@ use super::ast::Operator;
 ///     assignment_statement :: variable ASSIGN expr
 ///     variable             :: ID
 ///     expr                 :: term ((PLUS | MINUS) term)*
-///     term                 :: factor ((MUL | DIV) factor)*
-///     factor               :: (PLUS | MINUS) factor | INTEGER | LPAREN expr RPAREN | variable
+///     term                 :: factor ((MUL | INTEGER_DIV | FLOAT_DIV) factor)*
+///     factor               :: (PLUS | MINUS) factor | INTEGER_CONST | REAL_CONST | LPAREN expr RPAREN | variable
 /// </pre>
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -125,16 +125,17 @@ impl<'a> Parser<'a> {
     }
 
     /// <pre>
-    ///     term :: factor ((MUL | DIV) factor)*
+    ///     term :: factor ((MUL | INTEGER_DIV | FLOAT_DIV) factor)*
     /// </pre>
     fn term(&mut self) -> Result<Expr, String> {
         let mut term = self.factor()?;
 
-        while matches!(self.lexer.peek(), Some(&Token::MULTIPLY) | Some(&Token::DIVIDE)) {
+        while matches!(self.lexer.peek(), Some(&Token::MULTIPLY) | Some(&Token::INTEGER_DIV) | Some(&Token::FLOAT_DIV)) {
             term = match (self.lexer.next(), self.factor()) {
-                (Some(Token::MULTIPLY), Ok(factor)) => Ok(Expr::BinOp(Box::new(term), Operator::Multiply, Box::new(factor))),
-                (Some(Token::DIVIDE), Ok(factor))   => Ok(Expr::BinOp(Box::new(term), Operator::Divide, Box::new(factor))),
-                _                                   => Err(String::from("Term Parse Error"))
+                (Some(Token::MULTIPLY), Ok(factor))    => Ok(Expr::BinOp(Box::new(term), Operator::Multiply, Box::new(factor))),
+                (Some(Token::INTEGER_DIV), Ok(factor)) => Ok(Expr::BinOp(Box::new(term), Operator::IntegerDivide, Box::new(factor))),
+                (Some(Token::FLOAT_DIV), Ok(factor))   => Ok(Expr::BinOp(Box::new(term), Operator::FloatDivide, Box::new(factor))),
+                _                                      => Err(String::from("Term Parse Error"))
             }?;
         }
 
@@ -142,7 +143,7 @@ impl<'a> Parser<'a> {
     }
 
     /// <pre>
-    ///     factor :: (PLUS | MINUS) factor | INTEGER | LPAREN expr RPAREN | variable
+    ///     factor :: (PLUS | MINUS) factor | INTEGER_CONST | REAL_CONST | LPAREN expr RPAREN | variable
     /// </pre>
     fn factor(&mut self) -> Result<Expr, String> {
         if let Some(&Token::ID(_)) = self.lexer.peek() {
@@ -150,15 +151,16 @@ impl<'a> Parser<'a> {
         }
         else {
             return match self.lexer.next() {
-                Some(Token::PLUS)       => Ok(Expr::UnaryOp(Operator::Plus, Box::new(self.factor()?))),
-                Some(Token::MINUS)      => Ok(Expr::UnaryOp(Operator::Minus, Box::new(self.factor()?))),
-                Some(Token::INTEGER(i)) => Ok(Expr::Num(i)),
-                Some(Token::LPAREN)     =>
+                Some(Token::PLUS)             => Ok(Expr::UnaryOp(Operator::Plus, Box::new(self.factor()?))),
+                Some(Token::MINUS)            => Ok(Expr::UnaryOp(Operator::Minus, Box::new(self.factor()?))),
+                Some(Token::INTEGER_CONST(i)) => Ok(Expr::Num(i as f32)),
+                Some(Token::REAL_CONST(i))    => Ok(Expr::Num(i)),
+                Some(Token::LPAREN)           =>
                     match (self.expr(), self.lexer.next()) {
                         (Ok(expr), Some(Token::RPAREN)) => Ok(expr),
                         _                               => Err(String::from("Factor Parse Error"))
                     },
-                _                       => Err(String::from("Parse Error"))
+                _                             => Err(String::from("Parse Error"))
             };
         }
     }

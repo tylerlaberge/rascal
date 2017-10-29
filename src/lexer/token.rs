@@ -1,4 +1,5 @@
 #[derive(Debug)]
+#[allow(non_camel_case_types)]
 pub enum Token {
     BEGIN,
     END,
@@ -6,11 +7,13 @@ pub enum Token {
     SEMI,
     ASSIGN,
     ID(String),
-    INTEGER(u32),
     PLUS,
     MINUS,
     MULTIPLY,
-    DIVIDE,
+    INTEGER_DIV,
+    FLOAT_DIV,
+    INTEGER_CONST(u32),
+    REAL_CONST(f32),
     LPAREN,
     RPAREN,
     EOF,

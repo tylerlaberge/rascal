@@ -8,11 +8,11 @@ use parser::ast::Variable;
 
 pub trait NodeVisitor {
 
-    fn visit_variable(&mut self, node: Variable) -> Result<i32, String>;
-    fn visit_unaryop(&mut self, node: Expr) -> Result<i32, String>;
-    fn visit_binop(&mut self, node: Expr) -> Result<i32, String>;
-    fn visit_num(&mut self, node: Expr) -> Result<i32, String>;
-    fn visit_expr(&mut self, node: Expr) -> Result<i32, String> {
+    fn visit_variable(&mut self, node: Variable) -> Result<f32, String>;
+    fn visit_unaryop(&mut self, node: Expr) -> Result<f32, String>;
+    fn visit_binop(&mut self, node: Expr) -> Result<f32, String>;
+    fn visit_num(&mut self, node: Expr) -> Result<f32, String>;
+    fn visit_expr(&mut self, node: Expr) -> Result<f32, String> {
         return match node {
             Expr::UnaryOp(_, _)      => self.visit_unaryop(node),
             Expr::BinOp(_, _, _)     => self.visit_binop(node),
