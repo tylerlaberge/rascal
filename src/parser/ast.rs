@@ -1,6 +1,28 @@
 #[derive(Debug)]
 pub enum Program {
-    Compound(Compound)
+    Program(Variable, Block)
+}
+
+#[derive(Debug)]
+pub enum Block {
+    Block(Declarations, Compound)
+}
+
+#[derive(Debug)]
+pub enum Declarations {
+    VariableDeclarations(Vec<VariableDeclaration>),
+    Empty
+}
+
+#[derive(Debug)]
+pub enum VariableDeclaration {
+    Variables(Vec<String>, TypeSpec)
+}
+
+#[derive(Debug)]
+pub enum TypeSpec {
+    INTEGER,
+    REAL
 }
 
 #[derive(Debug)]
@@ -17,7 +39,7 @@ pub enum StatementList {
 pub enum Statement {
     Compound(Compound),
     Assignment(Assignment),
-    NoOp
+    Empty
 }
 
 #[derive(Debug)]

@@ -1,6 +1,10 @@
 use lexer::Lexer;
 use lexer::Token;
 use super::ast::Program;
+use super::ast::Block;
+use super::ast::Declarations;
+use super::ast::VariableDeclaration;
+use super::ast::TypeSpec;
 use super::ast::Compound;
 use super::ast::StatementList;
 use super::ast::Statement;
@@ -10,7 +14,11 @@ use super::ast::Expr;
 use super::ast::Operator;
 
 /// <pre>
-///     program              :: compound_statement DOT
+///     program              :: PROGRAM variable SEMI block DOT
+///     block                :: declarations compound_statement
+///     declarations         :: VAR (variable_declaration SEMI)+ | empty
+///     variable_declaration :: ID (COMMA ID)* COLON type_spec
+///     type_spec            :: INTEGER | REAL
 ///     compound_statement   :: BEGIN statement_list END
 ///     statement_list       :: statement | statement SEMI statement_list
 ///     statement            :: compound_statement | assignment_statement | empty
@@ -31,14 +39,91 @@ impl<'a> Parser<'a> {
     }
 
     /// <pre>
-    ///     program :: compound_statement DOT
+    ///     program :: PROGRAM variable SEMI block DOT
     /// </pre>
     fn program(&mut self) -> Result<Program, String> {
-        let compound = self.compound_statement()?;
+        match (self.lexer.next(), self.variable()?, self.lexer.next(), self.block()?, self.lexer.next()) {
+            (Some(Token::PROGRAM), variable, Some(Token::SEMI), block, Some(Token::DOT)) => Ok(Program::Program(variable, block)),
+            _                                                                            => Err(String::from("Program Parse Error"))
+        }
+    }
 
+    /// <pre>
+    ///     block :: declarations compound_statement
+    /// </pre>
+    fn block(&mut self) -> Result<Block, String> {
+        return Ok(Block::Block(self.declarations()?, self.compound_statement()?));
+    }
+
+    /// <pre>
+    ///     declarations :: VAR (variable_declaration SEMI)+ | empty
+    /// </pre>
+    fn declarations(&mut self) -> Result<Declarations, String> {
+        if let Some(&Token::VAR) = self.lexer.peek() {
+            self.lexer.next(); // eat the var
+
+            let mut variable_declarations: Vec<VariableDeclaration> = vec![];
+            while let Some(&Token::ID(_)) = self.lexer.peek() {
+                match (self.variable_declaration()?, self.lexer.next()) {
+                    (variable_declaration, Some(Token::SEMI)) => {
+                        variable_declarations.push(variable_declaration);
+                        Ok(())
+                    },
+                    _                                         => Err(String::from("Declarations Parse Error"))
+                }?;
+            }
+
+            if variable_declarations.len() > 0 {
+                return Ok(Declarations::VariableDeclarations(variable_declarations));
+            }
+            else {
+                return Err(String::from("Declarations Parse Error"));
+            }
+        }
+        else {
+            return Ok(Declarations::Empty);
+        }
+    }
+
+    /// <pre>
+    ///     variable_declaration :: ID (COMMA ID)* COLON type_spec
+    /// </pre>
+    fn variable_declaration(&mut self) -> Result<VariableDeclaration, String> {
+        let mut ids: Vec<String> = vec![];
+
+        match self.lexer.next() {
+            Some(Token::ID(name)) => {
+                ids.push(name);
+                Ok(())
+            },
+            _                     => Err(String::from("Variable Declaration Parse Error"))
+        }?;
+
+        while let Some(&Token::COMMA) = self.lexer.peek() {
+            self.lexer.next(); // eat the comma
+
+            match self.lexer.next() {
+                Some(Token::ID(name)) => {
+                    ids.push(name);
+                    Ok(())
+                },
+                _                     => Err(String::from("Variable Declaration Parse Error"))
+            }?;
+        }
+
+        return match (self.lexer.next(), self.type_spec()?) {
+            (Some(Token::COLON), type_spec) => Ok(VariableDeclaration::Variables(ids, type_spec)),
+            _                               => Err(String::from("Variable Declaration Parse Error"))
+        };
+    }
+    /// <pre>
+    ///     type_spec:: INTEGER | REAL
+    /// </pre>
+    fn type_spec(&mut self) -> Result<TypeSpec, String> {
         return match self.lexer.next() {
-            Some(Token::DOT) => Ok(Program::Compound(compound)),
-            _                => Err(String::from("Program Parse Error"))
+            Some(Token::INTEGER) => Ok(TypeSpec::INTEGER),
+            Some(Token::REAL)    => Ok(TypeSpec::REAL),
+            _                    => Err(String::from("TypeSpec Parse Error"))
         };
     }
 
@@ -83,7 +168,7 @@ impl<'a> Parser<'a> {
         return match self.lexer.peek() {
             Some(&Token::BEGIN) => Ok(Statement::Compound(self.compound_statement()?)),
             Some(&Token::ID(_)) => Ok(Statement::Assignment(self.assignment_statement()?)),
-            Some(&Token::END)   => Ok(Statement::NoOp),
+            Some(&Token::END)   => Ok(Statement::Empty),
             _                   => Err(String::from("Statement Parse Error"))
         };
     }

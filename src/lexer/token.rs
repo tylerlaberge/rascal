@@ -1,6 +1,12 @@
 #[derive(Debug)]
 #[allow(non_camel_case_types)]
 pub enum Token {
+    PROGRAM,
+    VAR,
+    COMMA,
+    COLON,
+    INTEGER,
+    REAL,
     BEGIN,
     END,
     DOT,

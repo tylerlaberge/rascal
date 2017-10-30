@@ -1,4 +1,7 @@
 use parser::ast::Program;
+use parser::ast::Block;
+use parser::ast::Declarations;
+use parser::ast::VariableDeclaration;
 use parser::ast::Compound;
 use parser::ast::StatementList;
 use parser::ast::Statement;
@@ -26,7 +29,7 @@ pub trait NodeVisitor {
         return match node {
             Statement::Compound(compound)     => self.visit_compound(compound),
             Statement::Assignment(assignment) => self.visit_assignment(assignment),
-            Statement::NoOp                   => Ok(())
+            Statement::Empty                  => Ok(())
         };
     }
     fn visit_statement_list(&mut self, node: StatementList) -> Result<(), String> {
@@ -47,9 +50,35 @@ pub trait NodeVisitor {
         };
     }
 
+    fn visit_variable_declaration(&mut self, node: VariableDeclaration) -> Result<(), String>;
+
+    fn visit_declarations(&mut self, node: Declarations) -> Result<(), String> {
+        return match node {
+            Declarations::VariableDeclarations(variable_declarations) => {
+                for variable_declaration in variable_declarations {
+                    self.visit_variable_declaration(variable_declaration)?;
+                }
+
+                Ok(())
+            },
+            Declarations::Empty => Ok(())
+        }
+    }
+
+    fn visit_block(&mut self, node: Block) -> Result<(), String> {
+        return match node {
+            Block::Block(declarations, compound) => {
+                self.visit_declarations(declarations)?;
+                self.visit_compound(compound)?;
+
+                Ok(())
+            }
+        }
+    }
+
     fn visit_program(&mut self, node: Program) -> Result<(), String> {
         return match node {
-            Program::Compound(compound) => self.visit_compound(compound)
+            Program::Program(_, block) => self.visit_block(block)
         };
     }
 }

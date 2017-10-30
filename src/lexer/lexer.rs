@@ -92,10 +92,14 @@ impl<'a> Lexer<'a> {
             });
 
         return match final_id.as_str() {
-            "BEGIN" => Ok(Token::BEGIN),
-            "END"   => Ok(Token::END),
-            "div"   => Ok(Token::INTEGER_DIV),
-            id      => Ok(Token::ID(id.to_string()))
+            "PROGRAM" => Ok(Token::PROGRAM),
+            "BEGIN"   => Ok(Token::BEGIN),
+            "END"     => Ok(Token::END),
+            "VAR"     => Ok(Token::VAR),
+            "INTEGER" => Ok(Token::INTEGER),
+            "REAL"    => Ok(Token::REAL),
+            "div"     => Ok(Token::INTEGER_DIV),
+            id        => Ok(Token::ID(id.to_string()))
         };
     }
 
@@ -112,7 +116,11 @@ impl<'a> Lexer<'a> {
             Some(character) if character.is_whitespace() => self.lex(),
             Some(character) if character.is_digit(10)    => self.integer(),
             Some(character) if character.is_alphabetic() => self.id(),
-            Some(':')                                    => self.assign(),
+            Some(':')                                    => match self.source.peek() {
+                Some(&'=') => self.assign(),
+                _          => Ok(Token::COLON)
+            },
+            Some(',')                                    => Ok(Token::COMMA),
             Some('.')                                    => Ok(Token::DOT),
             Some(';')                                    => Ok(Token::SEMI),
             Some('+')                                    => Ok(Token::PLUS),

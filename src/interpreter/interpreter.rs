@@ -1,8 +1,14 @@
+use parser::ast::VariableDeclaration;
+use parser::ast::TypeSpec;
 use parser::ast::Expr;
 use parser::ast::Operator;
 use parser::ast::Assignment;
 use parser::ast::Variable;
 use parser::Parser;
+
+use symbol_table::SymbolTable;
+use symbol_table::Symbol;
+
 use super::node_visitor::NodeVisitor;
 
 use std::collections::HashMap;
@@ -12,12 +18,13 @@ use std::fmt;
 
 pub struct Interpreter<'a> {
     parser: Parser<'a>,
-    symbol_table: HashMap<String, f32>
+    global_scope: HashMap<String, f32>,
+    symbol_table: SymbolTable
 }
 
 impl<'a> Display for Interpreter<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        return write!(f, "{:?}", self.symbol_table);
+        return write!(f, "{:?}\n{:?}", self.global_scope, self.symbol_table);
     }
 }
 
@@ -25,7 +32,8 @@ impl<'a> Interpreter<'a> {
     pub fn new(parser: Parser<'a>) -> Interpreter<'a> {
         return Interpreter {
             parser,
-            symbol_table: HashMap::new()
+            global_scope: HashMap::new(),
+            symbol_table: SymbolTable::new()
         };
     }
 
@@ -69,19 +77,58 @@ impl<'a> NodeVisitor for Interpreter<'a> {
         match node {
             Assignment::Assign(Variable::Var(name), expression) => {
                 let val = self.visit_expr(expression)?;
-                self.symbol_table.insert(name, val);
+
+                let symbol = match self.symbol_table.lookup(&name) {
+                    Some(symbol) => Ok(symbol),
+                    None          => Err(String::from(format!("Variable {} was never defined", name)))
+                }?;
+
+                match symbol {
+                    &Symbol::INTEGER(_) => match val.to_string().parse::<i32>() {
+                        Ok(_) => Ok(()),
+                        _     => Err(String::from("Expected INTEGER type"))
+                    },
+                    &Symbol::REAL(_)    => match val.to_string().parse::<f32>() {
+                        Ok(_) => Ok(()),
+                        _     => Err(String::from("Expected INTEGER type"))
+                    },
+                }?;
+
+                self.global_scope.insert(name, val);
             }
-        }
+        };
 
         return Ok(());
     }
     fn visit_variable(&mut self, node: Variable) -> Result<f32, String> {
         return match node {
-            Variable::Var(name) =>
-                match self.symbol_table.get(&name) {
+            Variable::Var(name) => {
+                match self.global_scope.get(&name) {
                     Some(&val) => Ok(val),
-                    None       => Err(String::from(format!("Unknown variable: {}", name)))
+                    None => Err(String::from(format!("Unknown variable: {}", name)))
                 }
+            }
         }
+    }
+
+    fn visit_variable_declaration(&mut self, node: VariableDeclaration) -> Result<(), String> {
+        match node {
+            VariableDeclaration::Variables(names, TypeSpec::REAL) => {
+                for name in names {
+                    let symbol = Symbol::REAL(name);
+
+                    self.symbol_table.define(symbol);
+                }
+            },
+            VariableDeclaration::Variables(names, TypeSpec::INTEGER) => {
+                for name in names {
+                    let symbol = Symbol::INTEGER(name);
+
+                    self.symbol_table.define(symbol);
+                }
+            }
+        };
+
+        return Ok(());
     }
 }

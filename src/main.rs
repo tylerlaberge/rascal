@@ -6,19 +6,16 @@ use rascal::interpreter;
 
 fn main() {
     let input = "
+PROGRAM test;
+VAR
+   a, b, y : INTEGER;
+   y       : REAL;
 BEGIN
-    BEGIN
-        number := 2;
-        a := number;
-        b := 10 * a + 10 * number / 4;
-        c := a - - b
-    END;
-    x := 11;
-    foo := x div 5;
-    bar := x / 5;
-    baz := 5.5;
-    test := foo * bar div baz
-END.";
+   a := 2;
+   b := 10 * a + 10 * a div 3;
+   y := 20 / 7 + 3.14;
+END.
+";
     println!("{}", input);
 
     interpret(String::from(input));
