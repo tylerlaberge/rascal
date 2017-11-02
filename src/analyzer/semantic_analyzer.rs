@@ -74,16 +74,18 @@ impl SemanticAnalyzer {
         match node {
             &VariableDeclaration::Variables(ref names, TypeSpec::REAL) => {
                 for name in names {
-                    let symbol = Symbol::REAL(name.to_owned());
-
-                    self.symbol_table.define(symbol);
+                    match self.symbol_table.lookup(name) {
+                        None    => Ok(self.symbol_table.define(Symbol::REAL(name.to_owned()))),
+                        Some(_) => Err(String::from("Variable declared more than once"))
+                    }?;
                 }
             },
             &VariableDeclaration::Variables(ref names, TypeSpec::INTEGER) => {
                 for name in names {
-                    let symbol = Symbol::INTEGER(name.to_owned());
-
-                    self.symbol_table.define(symbol);
+                    match self.symbol_table.lookup(name) {
+                        None    => Ok(self.symbol_table.define(Symbol::INTEGER(name.to_owned()))),
+                        Some(_) => Err(String::from("Variable declared more than once"))
+                    }?;
                 }
             }
         };
