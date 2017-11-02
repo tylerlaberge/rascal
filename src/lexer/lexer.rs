@@ -36,7 +36,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn number(&mut self) -> Result<u32, String> {
+    fn number(&mut self) -> Result<i32, String> {
         let start_int: String = match self.source.current_char() {
             Some(c) if c.is_digit(10) => Ok(c),
             _                         => Err("Internal Lexer Error, expected number")
@@ -48,7 +48,7 @@ impl<'a> Lexer<'a> {
                 acc.push(next_int);
                 return acc;
             })
-            .parse::<u32>()
+            .parse::<i32>()
             .or(Err("Internal Lexer Error, failed to parse integer"))?;
 
         return Ok(final_int);

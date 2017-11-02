@@ -18,7 +18,7 @@ pub enum Token {
     MULTIPLY,
     INTEGER_DIV,
     FLOAT_DIV,
-    INTEGER_CONST(u32),
+    INTEGER_CONST(i32),
     REAL_CONST(f32),
     LPAREN,
     RPAREN,

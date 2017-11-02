@@ -238,8 +238,8 @@ impl<'a> Parser<'a> {
             return match self.lexer.next() {
                 Some(Token::PLUS)             => Ok(Expr::UnaryOp(Operator::Plus, Box::new(self.factor()?))),
                 Some(Token::MINUS)            => Ok(Expr::UnaryOp(Operator::Minus, Box::new(self.factor()?))),
-                Some(Token::INTEGER_CONST(i)) => Ok(Expr::Num(i as f32)),
-                Some(Token::REAL_CONST(i))    => Ok(Expr::Num(i)),
+                Some(Token::INTEGER_CONST(i)) => Ok(Expr::Int(i)),
+                Some(Token::REAL_CONST(i))    => Ok(Expr::Float(i)),
                 Some(Token::LPAREN)           =>
                     match (self.expr(), self.lexer.next()) {
                         (Ok(expr), Some(Token::RPAREN)) => Ok(expr),

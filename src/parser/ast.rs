@@ -54,7 +54,8 @@ pub enum Variable {
 
 #[derive(Debug)]
 pub enum Expr {
-    Num(f32),
+    Int(i32),
+    Float(f32),
     BinOp(Box<Expr>, Operator, Box<Expr>),
     UnaryOp(Operator, Box<Expr>),
     Variable(Variable)
