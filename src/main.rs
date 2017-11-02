@@ -5,21 +5,46 @@ use rascal::parser;
 use rascal::analyzer;
 use rascal::interpreter;
 
-fn main() {
-    let input = "
-PROGRAM test;
-VAR
-   a, b : INTEGER;
-   y    : REAL;
-BEGIN
-   a := 2;
-   b := 10 * a + 10 * a div 3;
-   y := 20.0 / 7.0 + 3.14;
-END.
-";
-    println!("{}", input);
+use std::env;
+use std::io::Read;
+use std::fs::File;
 
-    interpret(String::from(input));
+fn main() {
+    let filename = match get_file_name() {
+        Ok(filename) => filename,
+        Err(e)       => panic!(e)
+    };
+    let source = match read_source_file(filename.as_str()) {
+        Ok(source) => source,
+        Err(e)      => panic!(e)
+    };
+    println!("{}", source);
+
+    interpret(source);
+}
+
+fn get_file_name() -> Result<String, String> {
+    let mut args = env::args();
+    args.next();
+
+    return match args.next() {
+        Some(filename) => Ok(filename),
+        None           => Err(String::from("Missing filename"))
+    };
+}
+
+fn read_source_file(filename: &str) -> Result<String, String> {
+    let mut file = match File::open(filename) {
+        Ok(file) => Ok(file),
+        Err(_)   => Err("Couldn't open file")
+    }?;
+    let mut contents = String::new();
+    match file.read_to_string(&mut contents) {
+        Ok(_)  => Ok(()),
+        Err(_) => Err("Could not read file")
+    }?;
+
+    return Ok(contents);
 }
 
 fn interpret(input: String) {
