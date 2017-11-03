@@ -10,8 +10,8 @@ use parser::ast::Expr;
 use parser::ast::Assignment;
 use parser::ast::Variable;
 
-use symbol_table::SymbolTable;
-use symbol_table::Symbol;
+use super::symbol_table::SymbolTable;
+use super::symbol::Symbol;
 
 use std::fmt::Display;
 use std::fmt::Formatter;

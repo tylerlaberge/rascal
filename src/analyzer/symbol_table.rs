@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use super::Symbol;
+use super::symbol::Symbol;
 
 #[derive(Debug)]
 pub struct SymbolTable {
