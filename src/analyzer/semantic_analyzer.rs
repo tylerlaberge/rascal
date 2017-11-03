@@ -9,6 +9,7 @@ use parser::ast::TypeSpec;
 use parser::ast::Expr;
 use parser::ast::Assignment;
 use parser::ast::Variable;
+use parser::ast::Operator;
 
 use super::symbol_table::SymbolTable;
 use super::symbol::Symbol;
@@ -155,6 +156,18 @@ impl SemanticAnalyzer {
 
     fn visit_binop(&mut self, expr: &Expr) -> Result<TypeSpec, String> {
         return match expr {
+            &Expr::BinOp(ref left, Operator::IntegerDivide, ref right) =>
+                match (self.visit_expr(left)?, self.visit_expr(right)?) {
+                    (TypeSpec::INTEGER, TypeSpec::INTEGER) => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::REAL, TypeSpec::REAL)       => Err(String::from("Cannot do integer division with float types")),
+                    _                                      => Err(String::from("Mismatching types"))
+                },
+            &Expr::BinOp(ref left, Operator::FloatDivide, ref right) =>
+                match (self.visit_expr(left)?, self.visit_expr(right)?) {
+                    (TypeSpec::REAL, TypeSpec::REAL)       => Ok(TypeSpec::REAL),
+                    (TypeSpec::INTEGER, TypeSpec::INTEGER) => Err(String::from("Cannot do float division with integer types")),
+                    _                                      => Err(String::from("Mismatching types"))
+                },
             &Expr::BinOp(ref left, _, ref right) =>
                 match (self.visit_expr(left)?, self.visit_expr(right)?) {
                     (TypeSpec::INTEGER, TypeSpec::INTEGER) => Ok(TypeSpec::INTEGER),
