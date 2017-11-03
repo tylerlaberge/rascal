@@ -2,8 +2,10 @@ extern crate itertools;
 
 #[macro_use]
 mod utils;
+mod lexer;
+mod parser;
+mod analyzer;
+mod interpreter;
+mod rascal;
 
-pub mod lexer;
-pub mod parser;
-pub mod analyzer;
-pub mod interpreter;
+pub use self::rascal::interpret;
