@@ -2,6 +2,7 @@
 #[allow(non_camel_case_types)]
 pub enum Token {
     PROGRAM,
+    PROCEDURE,
     VAR,
     COMMA,
     COLON,
@@ -41,6 +42,10 @@ impl TokenCache {
 
     pub fn peek(&self) -> Option<&Token> {
         return self.tokens.get(0);
+    }
+
+    pub fn peek_ahead(&self, ahead: usize) -> Option<&Token> {
+        return self.tokens.get(ahead);
     }
 }
 

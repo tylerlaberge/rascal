@@ -23,6 +23,10 @@ impl<'a> Lexer<'a> {
         return self.token_cache.peek();
     }
 
+    pub fn peek_ahead(&self, ahead: usize) -> Option<&Token> {
+        return self.token_cache.peek_ahead(ahead);
+    }
+
     fn init(&mut self) {
         loop {
             match self.lex() {
@@ -92,14 +96,15 @@ impl<'a> Lexer<'a> {
             });
 
         return match final_id.as_str() {
-            "PROGRAM" => Ok(Token::PROGRAM),
-            "BEGIN"   => Ok(Token::BEGIN),
-            "END"     => Ok(Token::END),
-            "VAR"     => Ok(Token::VAR),
-            "INTEGER" => Ok(Token::INTEGER),
-            "REAL"    => Ok(Token::REAL),
-            "div"     => Ok(Token::INTEGER_DIV),
-            id        => Ok(Token::ID(id.to_string()))
+            "PROGRAM"   => Ok(Token::PROGRAM),
+            "PROCEDURE" => Ok(Token::PROCEDURE),
+            "BEGIN"     => Ok(Token::BEGIN),
+            "END"       => Ok(Token::END),
+            "VAR"       => Ok(Token::VAR),
+            "INTEGER"   => Ok(Token::INTEGER),
+            "REAL"      => Ok(Token::REAL),
+            "div"       => Ok(Token::INTEGER_DIV),
+            id          => Ok(Token::ID(id.to_string()))
         };
     }
 

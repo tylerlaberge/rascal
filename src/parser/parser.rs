@@ -3,6 +3,9 @@ use lexer::Token;
 use super::ast::Program;
 use super::ast::Block;
 use super::ast::Declarations;
+use super::ast::ProcedureDeclaration;
+use super::ast::FormalParameterList;
+use super::ast::FormalParameters;
 use super::ast::VariableDeclaration;
 use super::ast::TypeSpec;
 use super::ast::Compound;
@@ -10,23 +13,30 @@ use super::ast::StatementList;
 use super::ast::Statement;
 use super::ast::Assignment;
 use super::ast::Variable;
+use super::ast::ProcedureCall;
+use super::ast::ProcedureParameters;
 use super::ast::Expr;
 use super::ast::Operator;
 
 /// <pre>
-///     program              :: PROGRAM variable SEMI block DOT
-///     block                :: declarations compound_statement
-///     declarations         :: VAR (variable_declaration SEMI)+ | empty
-///     variable_declaration :: ID (COMMA ID)* COLON type_spec
-///     type_spec            :: INTEGER | REAL
-///     compound_statement   :: BEGIN statement_list END
-///     statement_list       :: statement | statement SEMI statement_list
-///     statement            :: compound_statement | assignment_statement | empty
-///     assignment_statement :: variable ASSIGN expr
-///     variable             :: ID
-///     expr                 :: term ((PLUS | MINUS) term)*
-///     term                 :: factor ((MUL | INTEGER_DIV | FLOAT_DIV) factor)*
-///     factor               :: (PLUS | MINUS) factor | INTEGER_CONST | REAL_CONST | LPAREN expr RPAREN | variable
+///     program               :: PROGRAM variable SEMI block DOT
+///     block                 :: declarations compound_statement
+///     declarations          :: VAR (variable_declaration)+ (procedure_declaration)* | (procedure_declaration)* | empty
+///     procedure_declaration :: PROCEDURE ID (LPAREN formal_parameter_list RPAREN)? SEMI block SEMI
+///     formal_parameter_list :: formal_parameters | formal_parameters SEMI formal_parameter_list
+///     formal_parameters     :: ID (COMMA ID)* COLON type_spec
+///     variable_declaration  :: ID (COMMA ID)* COLON type_spec SEMI
+///     type_spec             :: INTEGER | REAL
+///     compound_statement    :: BEGIN statement_list END
+///     statement_list        :: statement | statement SEMI statement_list
+///     statement             :: compound_statement | assignment_statement | procedure_call | empty
+///     assignment_statement  :: variable ASSIGN expr
+///     variable              :: ID
+///     procedure_call        :: variable LPAREN (procedure_parameters)? RPAREN
+///     procedure_parameters  :: variable | variable COMMA procedure_parameters
+///     expr                  :: term ((PLUS | MINUS) term)*
+///     term                  :: factor ((MUL | INTEGER_DIV | FLOAT_DIV) factor)*
+///     factor                :: (PLUS | MINUS) factor | INTEGER_CONST | REAL_CONST | LPAREN expr RPAREN | variable
 /// </pre>
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -56,37 +66,43 @@ impl<'a> Parser<'a> {
     }
 
     /// <pre>
-    ///     declarations :: VAR (variable_declaration SEMI)+ | empty
+    ///     declarations :: VAR (variable_declaration)+ (procedure_declaration)* | (procedure_declaration)* | empty
     /// </pre>
-    fn declarations(&mut self) -> Result<Declarations, String> {
+    fn declarations(&mut self) -> Result<Vec<Declarations>, String> {
+        let mut declarations: Vec<Declarations> = vec![];
+
         if let Some(&Token::VAR) = self.lexer.peek() {
             self.lexer.next(); // eat the var
 
             let mut variable_declarations: Vec<VariableDeclaration> = vec![];
             while let Some(&Token::ID(_)) = self.lexer.peek() {
-                match (self.variable_declaration()?, self.lexer.next()) {
-                    (variable_declaration, Some(Token::SEMI)) => {
-                        variable_declarations.push(variable_declaration);
-                        Ok(())
-                    },
-                    _                                         => Err(String::from("Declarations Parse Error"))
-                }?;
+                variable_declarations.push(self.variable_declaration()?);
             }
 
             if variable_declarations.len() > 0 {
-                return Ok(Declarations::VariableDeclarations(variable_declarations));
-            }
-            else {
+                declarations.push(Declarations::VariableDeclarations(variable_declarations));
+            } else {
                 return Err(String::from("Declarations Parse Error"));
             }
         }
-        else {
-            return Ok(Declarations::Empty);
+
+        let mut procedure_declarations: Vec<ProcedureDeclaration> = vec![];
+        while let Some(&Token::PROCEDURE) = self.lexer.peek() {
+            procedure_declarations.push(self.procedure_declaration()?);
         }
+        if procedure_declarations.len() > 0 {
+            declarations.push(Declarations::ProcedureDeclarations(procedure_declarations));
+        }
+
+        if declarations.is_empty() {
+            declarations.push(Declarations::Empty);
+        }
+
+        return Ok(declarations);
     }
 
     /// <pre>
-    ///     variable_declaration :: ID (COMMA ID)* COLON type_spec
+    ///     variable_declaration :: ID (COMMA ID)* COLON type_spec SEMI
     /// </pre>
     fn variable_declaration(&mut self) -> Result<VariableDeclaration, String> {
         let mut ids: Vec<String> = vec![];
@@ -111,11 +127,12 @@ impl<'a> Parser<'a> {
             }?;
         }
 
-        return match (self.lexer.next(), self.type_spec()?) {
-            (Some(Token::COLON), type_spec) => Ok(VariableDeclaration::Variables(ids, type_spec)),
-            _                               => Err(String::from("Variable Declaration Parse Error"))
+        return match (self.lexer.next(), self.type_spec()?, self.lexer.next()) {
+            (Some(Token::COLON), type_spec, Some(Token::SEMI)) => Ok(VariableDeclaration::Variables(ids, type_spec)),
+            _                                                  => Err(String::from("Variable Declaration Parse Error"))
         };
     }
+
     /// <pre>
     ///     type_spec:: INTEGER | REAL
     /// </pre>
@@ -124,6 +141,79 @@ impl<'a> Parser<'a> {
             Some(Token::INTEGER) => Ok(TypeSpec::INTEGER),
             Some(Token::REAL)    => Ok(TypeSpec::REAL),
             _                    => Err(String::from("TypeSpec Parse Error"))
+        };
+    }
+
+    /// <pre>
+    ///     procedure_declaration :: PROCEDURE ID (LPAREN formal_parameter_list RPAREN)? SEMI block SEMI
+    /// </pre>
+    fn procedure_declaration(&mut self) -> Result<ProcedureDeclaration, String> {
+        let name = match (self.lexer.next(), self.lexer.next()) {
+            (Some(Token::PROCEDURE), Some(Token::ID(name))) => Ok(name),
+            _                                               => Err(String::from("Procedure Declaration Parse Error"))
+        }?;
+        let parameters = match self.lexer.peek() {
+            Some(&Token::LPAREN) =>
+                match (self.lexer.next(), self.formal_parameter_list()?, self.lexer.next()) {
+                    (Some(Token::LPAREN), formal_parameter_list, Some(Token::RPAREN)) => Ok(formal_parameter_list),
+                    _                                                                 => Err(String::from("Procedure Declaration Parse Error"))
+            },
+            _                   => Ok(FormalParameterList::FormalParameters(vec![]))
+        }?;
+        let block = match (self.lexer.next(), self.block()?, self.lexer.next()) {
+            (Some(Token::SEMI), block, Some(Token::SEMI)) => Ok(block),
+            _                                             => Err(String::from("Procedure Declaration Parse Error"))
+        }?;
+
+        return Ok(ProcedureDeclaration::Procedure(name, parameters, block));
+    }
+
+    /// <pre>
+    ///     formal_parameter_list :: formal_parameters | formal_parameters SEMI formal_parameter_list
+    /// </pre>
+    fn formal_parameter_list(&mut self) -> Result<FormalParameterList, String> {
+        let mut parameters: Vec<FormalParameters> = vec![];
+        loop {
+            parameters.push(self.formal_parameters()?);
+
+            match self.lexer.peek() {
+                Some(&Token::SEMI) => self.lexer.next(),
+                _                  => break
+            };
+        }
+
+        return Ok(FormalParameterList::FormalParameters(parameters));
+    }
+
+    /// <pre>
+    ///     formal_parameters :: ID (COMMA ID)* COLON type_spec
+    /// </pre>
+    fn formal_parameters(&mut self) -> Result<FormalParameters, String> {
+        let mut ids: Vec<String> = vec![];
+
+        match self.lexer.next() {
+            Some(Token::ID(name)) => {
+                ids.push(name);
+                Ok(())
+            },
+            _                     => Err(String::from("Formal Parameters Parse Error"))
+        }?;
+
+        while let Some(&Token::COMMA) = self.lexer.peek() {
+            self.lexer.next(); // eat the comma
+
+            match self.lexer.next() {
+                Some(Token::ID(name)) => {
+                    ids.push(name);
+                    Ok(())
+                },
+                _                     => Err(String::from("Formal Parameters Parse Error"))
+            }?;
+        }
+
+        return match (self.lexer.next(), self.type_spec()?) {
+            (Some(Token::COLON), type_spec) => Ok(FormalParameters::Parameters(ids, type_spec)),
+            _                               => Err(String::from("Formal Parameters Parse Error"))
         };
     }
 
@@ -162,12 +252,15 @@ impl<'a> Parser<'a> {
     }
 
     /// <pre>
-    ///     statement :: compound_statement | assignment_statement | empty
+    ///     statement :: compound_statement | assignment_statement | procedure_call | empty
     /// </pre>
     fn statement(&mut self) -> Result<Statement, String> {
         return match self.lexer.peek() {
             Some(&Token::BEGIN) => Ok(Statement::Compound(self.compound_statement()?)),
-            Some(&Token::ID(_)) => Ok(Statement::Assignment(self.assignment_statement()?)),
+            Some(&Token::ID(_)) => match self.lexer.peek_ahead(1) {
+                Some(&Token::LPAREN) => Ok(Statement::ProcedureCall(self.procedure_call()?)),
+                _                    => Ok(Statement::Assignment(self.assignment_statement()?))
+            },
             Some(&Token::END)   => Ok(Statement::Empty),
             _                   => Err(String::from("Statement Parse Error"))
         };
@@ -191,6 +284,46 @@ impl<'a> Parser<'a> {
             Some(Token::ID(id)) => Ok(Variable::Var(id)),
             _                   => Err(String::from("Variable Parse Error"))
         };
+    }
+
+    /// <pre>
+    ///     procedure_call :: variable LPAREN (procedure_parameters)? RPAREN
+    /// </pre>
+    fn procedure_call(&mut self) -> Result<ProcedureCall, String> {
+        let procedure_id = self.variable()?;
+
+        match self.lexer.next() {
+            Some(Token::LPAREN) => Ok(()),
+            _                   => Err(String::from("Procedure Parse Error"))
+        }?;
+
+        let procedure_params = if let Some(&Token::RPAREN) = self.lexer.peek() {
+            ProcedureParameters::Parameters(vec![])
+        }
+        else {
+            self.procedure_parameters()?
+        };
+
+        match self.lexer.next() {
+            Some(Token::RPAREN) => Ok(()),
+            _                   => Err(String::from("Procedure Parse Error"))
+        }?;
+
+        return Ok(ProcedureCall::Call(procedure_id, procedure_params));
+    }
+
+    /// <pre>
+    ///     procedure_parameters :: variable | variable COMMA procedure_parameters
+    /// </pre>
+    fn procedure_parameters(&mut self) -> Result<ProcedureParameters, String> {
+        let mut parameters = vec![self.variable()?];
+
+        while let Some(&Token::COMMA) = self.lexer.peek() {
+            self.lexer.next(); // eat the comma
+            parameters.push(self.variable()?);
+        }
+
+        return Ok(ProcedureParameters::Parameters(parameters));
     }
     /// <pre>
     ///     expr :: term ((PLUS | MINUS) term)*
