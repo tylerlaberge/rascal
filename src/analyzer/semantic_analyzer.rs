@@ -145,6 +145,13 @@ impl SemanticAnalyzer {
                         vars.push(VarSymbol::REAL(name.to_owned()));
                     }
                     Ok(vars.to_vec())
+                },
+                &TypeSpec::STRING => {
+                    let mut vars: Vec<VarSymbol> = vec![];
+                    for name in names {
+                        vars.push(VarSymbol::STRING(name.to_owned()));
+                    }
+                    Ok(vars.to_vec())
                 }
             }
         };
@@ -164,6 +171,14 @@ impl SemanticAnalyzer {
                 for name in names {
                     match self.scope()?.local_lookup(name) {
                         None    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::INTEGER(name.to_owned())))),
+                        Some(_) => Err(String::from(format!("Variable declared more than once: {}", name)))
+                    }?;
+                }
+            },
+            &VariableDeclaration::Variables(ref names, TypeSpec::STRING) => {
+                for name in names {
+                    match self.scope()?.local_lookup(name) {
+                        None    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::STRING(name.to_owned())))),
                         Some(_) => Err(String::from(format!("Variable declared more than once: {}", name)))
                     }?;
                 }
@@ -219,7 +234,12 @@ impl SemanticAnalyzer {
                             TypeSpec::REAL => Ok(()),
                             _              => Err(String::from("Can't assign mismatched types"))
                         },
-                    _                                   => Err(String::from("Can't assign procedure"))
+                    Symbol::Var(VarSymbol::STRING(_))  =>
+                        match self.visit_expr(expression)? {
+                            TypeSpec::STRING => Ok(()),
+                            _                => Err(String::from("Can't assign mismatched types"))
+                        },
+                    _                                  => Err(String::from("Can't assign procedure"))
 
                 }
             }
@@ -243,6 +263,7 @@ impl SemanticAnalyzer {
                         match (declared, given) {
                             (&VarSymbol::INTEGER(_), &VarSymbol::INTEGER(_)) => Ok(()),
                             (&VarSymbol::REAL(_), &VarSymbol::REAL(_))       => Ok(()),
+                            (&VarSymbol::STRING(_), &VarSymbol::STRING(_))   => Ok(()),
                             (expected, actual)                               => Err(String::from(format!("Procedure expected {:?}, but {:?} was given", expected, actual)))
                         }?;
                     }
@@ -280,54 +301,59 @@ impl SemanticAnalyzer {
             &Expr::UnaryOp(_, _)          => self.visit_unaryop(node),
             &Expr::Int(_)                 => self.visit_int(node),
             &Expr::Float(_)               => self.visit_float(node),
+            &Expr::String(_)              => self.visit_string(node),
             &Expr::Variable(ref variable) => self.visit_variable(variable)
         };
     }
 
     fn visit_binop(&mut self, expr: &Expr) -> Result<TypeSpec, String> {
         return match expr {
-            &Expr::BinOp(ref left, Operator::IntegerDivide, ref right) =>
-                match (self.visit_expr(left)?, self.visit_expr(right)?) {
-                    (TypeSpec::INTEGER, TypeSpec::INTEGER) => Ok(TypeSpec::INTEGER),
-                    (TypeSpec::REAL, TypeSpec::REAL)       => Err(String::from("Cannot do integer division with float types")),
-                    _                                      => Err(String::from("Mismatching types"))
+            &Expr::BinOp(ref left, ref operator, ref right) =>
+                match (self.visit_expr(left)?, operator, self.visit_expr(right)?) {
+                    (TypeSpec::INTEGER, &Operator::FloatDivide, TypeSpec::INTEGER) => Err(String::from("Cannot do float division with integer types")),
+                    (TypeSpec::REAL, &Operator::IntegerDivide, TypeSpec::REAL)     => Err(String::from("Cannot do integer division with float types")),
+                    (TypeSpec::STRING, &Operator::Minus, TypeSpec::STRING)         => Err(String::from("Cannot do subtraction with string types")),
+                    (TypeSpec::STRING, &Operator::Multiply, TypeSpec::STRING)      => Err(String::from("Cannot do multiplication with string types")),
+                    (TypeSpec::STRING, &Operator::FloatDivide, TypeSpec::STRING)   => Err(String::from("Cannot do float division with string types")),
+                    (TypeSpec::STRING, &Operator::IntegerDivide, TypeSpec::STRING) => Err(String::from("Cannot do integer division with string types")),
+                    (TypeSpec::INTEGER, _, TypeSpec::INTEGER)                      => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::REAL, _, TypeSpec::REAL)                            => Ok(TypeSpec::REAL),
+                    (TypeSpec::STRING, _, TypeSpec::STRING)                        => Ok(TypeSpec::STRING),
+                    _                                                              => Err(String::from("Mismatching types"))
                 },
-            &Expr::BinOp(ref left, Operator::FloatDivide, ref right) =>
-                match (self.visit_expr(left)?, self.visit_expr(right)?) {
-                    (TypeSpec::REAL, TypeSpec::REAL)       => Ok(TypeSpec::REAL),
-                    (TypeSpec::INTEGER, TypeSpec::INTEGER) => Err(String::from("Cannot do float division with integer types")),
-                    _                                      => Err(String::from("Mismatching types"))
-                },
-            &Expr::BinOp(ref left, _, ref right) =>
-                match (self.visit_expr(left)?, self.visit_expr(right)?) {
-                    (TypeSpec::INTEGER, TypeSpec::INTEGER) => Ok(TypeSpec::INTEGER),
-                    (TypeSpec::REAL, TypeSpec::REAL)       => Ok(TypeSpec::REAL),
-                    _                                      => Err(String::from("Mismatching types"))
-                },
-            _                                              => Err(String::from("Semantic Error"))
+            _                                                                      => Err(String::from("Semantic Error"))
         };
     }
 
     fn visit_unaryop(&mut self, expr: &Expr) -> Result<TypeSpec, String> {
         return match expr {
-            &Expr::UnaryOp(_, ref factor) => self.visit_expr(factor),
+            &Expr::UnaryOp(_, ref factor) => match self.visit_expr(factor)? {
+                TypeSpec::STRING => Err(String::from("Cannot do unary operations with string type")),
+                type_spec        => Ok(type_spec),
+            },
             _                             => Err(String::from("Semantic Error"))
         };
     }
-
 
     fn visit_int(&mut self, expr: &Expr) -> Result<TypeSpec, String> {
         return match expr {
             &Expr::Int(_) => Ok(TypeSpec::INTEGER),
             _             => Err(String::from("Semantic Error"))
-        }
+        };
     }
 
     fn visit_float(&mut self, expr: &Expr) -> Result<TypeSpec, String> {
         return match expr {
             &Expr::Float(_) => Ok(TypeSpec::REAL),
             _               => Err(String::from("Semantic Error"))
-        }
+        };
+    }
+
+    fn visit_string(&mut self, expr: &Expr) -> Result<TypeSpec, String> {
+        return match expr {
+            &Expr::String(_) => Ok(TypeSpec::STRING),
+            _                => Err(String::from("Semantic Error"))
+        };
     }
 
     fn visit_variable(&mut self, node: &Variable) -> Result<TypeSpec, String> {
@@ -337,12 +363,13 @@ impl SemanticAnalyzer {
                     Some(symbol) => match symbol {
                         &Symbol::Var(VarSymbol::INTEGER(_)) => Ok(TypeSpec::INTEGER),
                         &Symbol::Var(VarSymbol::REAL(_))    => Ok(TypeSpec::REAL),
+                        &Symbol::Var(VarSymbol::STRING(_))  => Ok(TypeSpec::STRING),
                         _                                   => Err(String::from("Procedure cannot be a variable"))
                     },
                     None         => Err(String::from(format!("Unknown variable: {}", name)))
                 }
             }
-        }
+        };
     }
 
     fn enter_scope(&mut self, name: String) {

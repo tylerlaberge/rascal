@@ -38,7 +38,8 @@ pub enum VariableDeclaration {
 #[derive(Debug, Clone)]
 pub enum TypeSpec {
     INTEGER,
-    REAL
+    REAL,
+    STRING
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +84,7 @@ pub enum ProcedureParameters {
 pub enum Expr {
     Int(i32),
     Float(f32),
+    String(String),
     BinOp(Box<Expr>, Operator, Box<Expr>),
     UnaryOp(Operator, Box<Expr>),
     Variable(Variable)

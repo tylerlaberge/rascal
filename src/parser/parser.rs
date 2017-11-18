@@ -36,7 +36,7 @@ use super::ast::Operator;
 ///     procedure_parameters  :: variable | variable COMMA procedure_parameters
 ///     expr                  :: term ((PLUS | MINUS) term)*
 ///     term                  :: factor ((MUL | INTEGER_DIV | FLOAT_DIV) factor)*
-///     factor                :: (PLUS | MINUS) factor | INTEGER_CONST | REAL_CONST | LPAREN expr RPAREN | variable
+///     factor                :: (PLUS | MINUS) factor | INTEGER_CONST | REAL_CONST | STRING_LITERAL | LPAREN expr RPAREN | variable
 /// </pre>
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
@@ -140,6 +140,7 @@ impl<'a> Parser<'a> {
         return match self.lexer.next() {
             Some(Token::INTEGER) => Ok(TypeSpec::INTEGER),
             Some(Token::REAL)    => Ok(TypeSpec::REAL),
+            Some(Token::STRING)  => Ok(TypeSpec::STRING),
             _                    => Err(String::from("TypeSpec Parse Error"))
         };
     }
@@ -361,7 +362,7 @@ impl<'a> Parser<'a> {
     }
 
     /// <pre>
-    ///     factor :: (PLUS | MINUS) factor | INTEGER_CONST | REAL_CONST | LPAREN expr RPAREN | variable
+    ///     factor :: (PLUS | MINUS) factor | INTEGER_CONST | REAL_CONST | STRING_LITERAL | LPAREN expr RPAREN | variable
     /// </pre>
     fn factor(&mut self) -> Result<Expr, String> {
         if let Some(&Token::ID(_)) = self.lexer.peek() {
@@ -369,16 +370,17 @@ impl<'a> Parser<'a> {
         }
         else {
             return match self.lexer.next() {
-                Some(Token::PLUS)             => Ok(Expr::UnaryOp(Operator::Plus, Box::new(self.factor()?))),
-                Some(Token::MINUS)            => Ok(Expr::UnaryOp(Operator::Minus, Box::new(self.factor()?))),
-                Some(Token::INTEGER_CONST(i)) => Ok(Expr::Int(i)),
-                Some(Token::REAL_CONST(i))    => Ok(Expr::Float(i)),
-                Some(Token::LPAREN)           =>
+                Some(Token::PLUS)              => Ok(Expr::UnaryOp(Operator::Plus, Box::new(self.factor()?))),
+                Some(Token::MINUS)             => Ok(Expr::UnaryOp(Operator::Minus, Box::new(self.factor()?))),
+                Some(Token::INTEGER_CONST(i))  => Ok(Expr::Int(i)),
+                Some(Token::REAL_CONST(i))     => Ok(Expr::Float(i)),
+                Some(Token::STRING_LITERAL(s)) => Ok(Expr::String(s)),
+                Some(Token::LPAREN)            =>
                     match (self.expr(), self.lexer.next()) {
                         (Ok(expr), Some(Token::RPAREN)) => Ok(expr),
                         _                               => Err(String::from("Factor Parse Error"))
                     },
-                _                             => Err(String::from("Parse Error"))
+                _                              => Err(String::from("Parse Error"))
             };
         }
     }

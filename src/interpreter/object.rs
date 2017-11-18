@@ -11,16 +11,18 @@ pub enum Object {
 #[derive(Debug)]
 pub enum Primitive {
     Integer(i32),
-    Float(f32)
+    Float(f32),
+    String(String)
 }
 
 impl Object {
 
     pub fn clone(&self) -> Self {
         return match self {
-            &Object::Primitive(Primitive::Integer(i)) => Object::Primitive(Primitive::Integer(i)),
-            &Object::Primitive(Primitive::Float(i))   => Object::Primitive(Primitive::Float(i)),
-            &Object::Procedure(_, _, _)               => panic!("Cannot clone procedure")
+            &Object::Primitive(Primitive::Integer(i))     => Object::Primitive(Primitive::Integer(i)),
+            &Object::Primitive(Primitive::Float(i))       => Object::Primitive(Primitive::Float(i)),
+            &Object::Primitive(Primitive::String(ref s))  => Object::Primitive(Primitive::String(s.clone())),
+            &Object::Procedure(_, _, _)                   => panic!("Cannot clone procedure")
         }
     }
     pub fn add(&self, other: &Self) -> Result<Self, String> {
@@ -29,7 +31,9 @@ impl Object {
                 => Ok(Object::Primitive(Primitive::Integer(left + right))),
             (&Object::Primitive(Primitive::Float(ref left)), &Object::Primitive(Primitive::Float(ref right)))
                 => Ok(Object::Primitive(Primitive::Float(left + right))),
-            _   => Err(String::from("Can't add incompatible types"))
+            (&Object::Primitive(Primitive::String(ref left)), &Object::Primitive(Primitive::String(ref right)))
+                => Ok(Object::Primitive(Primitive::String(format!("{}{}", left, right)))),
+            _   => Err(String::from("Can't add mismatching types"))
         };
     }
 
@@ -39,7 +43,9 @@ impl Object {
                 => Ok(Object::Primitive(Primitive::Integer(left - right))),
             (&Object::Primitive(Primitive::Float(ref left)), &Object::Primitive(Primitive::Float(ref right)))
                 => Ok(Object::Primitive(Primitive::Float(left - right))),
-            _   => Err(String::from("Can't subtract incompatible types"))
+            (&Object::Primitive(Primitive::String(_)), &Object::Primitive(Primitive::String(_)))
+                => Err(String::from("Can't subtract string types")),
+            _   => Err(String::from("Can't subtract mismatching types"))
         };
     }
 
@@ -49,7 +55,9 @@ impl Object {
                 => Ok(Object::Primitive(Primitive::Integer(left * right))),
             (&Object::Primitive(Primitive::Float(ref left)), &Object::Primitive(Primitive::Float(ref right)))
                 => Ok(Object::Primitive(Primitive::Float(left * right))),
-            _   => Err(String::from("Can't multiply incompatible types"))
+            (&Object::Primitive(Primitive::String(_)), &Object::Primitive(Primitive::String(_)))
+                => Err(String::from("Can't multiple string types")),
+            _   => Err(String::from("Can't multiply mismatching types"))
         };
     }
 
@@ -57,7 +65,11 @@ impl Object {
         return match (self, other) {
             (&Object::Primitive(Primitive::Integer(ref left)), &Object::Primitive(Primitive::Integer(ref right)))
                 => Ok(Object::Primitive(Primitive::Integer(left / right))),
-            _   => Err(String::from("Can't integer divide non-integer types"))
+            (&Object::Primitive(Primitive::Float(_)), &Object::Primitive(Primitive::Float(_)))
+                => Err(String::from("Can't integer divide float types")),
+            (&Object::Primitive(Primitive::String(_)), &Object::Primitive(Primitive::String(_)))
+                => Err(String::from("Can't integer divide string types")),
+            _   => Err(String::from("Can't integer divide mismatching types"))
         };
     }
 
@@ -65,7 +77,29 @@ impl Object {
         return match (self, other) {
             (&Object::Primitive(Primitive::Float(ref left)), &Object::Primitive(Primitive::Float(ref right)))
                 => Ok(Object::Primitive(Primitive::Float(left / right))),
-            _   => Err(String::from("Can't float divide non-float types"))
+            (&Object::Primitive(Primitive::Integer(_)), &Object::Primitive(Primitive::Integer(_)))
+                => Err(String::from("Can't float divide integer types")),
+            (&Object::Primitive(Primitive::String(_)), &Object::Primitive(Primitive::String(_)))
+                => Err(String::from("Can't float divide string types")),
+            _   => Err(String::from("Can't float divide mismatching types"))
+        };
+    }
+
+    pub fn unary_plus(&self) -> Result<Self, String> {
+        return match self {
+            &Object::Primitive(Primitive::Integer(i)) => Ok(Object::Primitive(Primitive::Integer(i))),
+            &Object::Primitive(Primitive::Float(i))   => Ok(Object::Primitive(Primitive::Float(i))),
+            &Object::Primitive(Primitive::String(_))  => Err(String::from("Can't do unary plus with string type")),
+            _                                         => Err(String::from("Can't do unary plus with procedures"))
+        };
+    }
+
+    pub fn unary_minus(&self) -> Result<Self, String> {
+        return match self {
+            &Object::Primitive(Primitive::Integer(i)) => Ok(Object::Primitive(Primitive::Integer(-i))),
+            &Object::Primitive(Primitive::Float(i))   => Ok(Object::Primitive(Primitive::Float(-i))),
+            &Object::Primitive(Primitive::String(_))  => Err(String::from("Can't do unary minus with string type")),
+            _                                         => Err(String::from("Can't do unary minus with procedures"))
         };
     }
 }

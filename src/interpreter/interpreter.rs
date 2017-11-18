@@ -192,6 +192,7 @@ impl Interpreter {
             &Expr::UnaryOp(_, _)          => self.visit_unaryop(node),
             &Expr::Int(_)                 => self.visit_int(node),
             &Expr::Float(_)               => self.visit_float(node),
+            &Expr::String(_)              => self.visit_string(node),
             &Expr::Variable(ref variable) => self.visit_variable(variable)
         };
     }
@@ -209,14 +210,8 @@ impl Interpreter {
 
     fn visit_unaryop(&mut self, node: &Expr) -> Result<Object, String> {
         return match node {
-            &Expr::UnaryOp(Operator::Plus, ref factor)  => Ok(self.visit_expr(factor)?),
-            &Expr::UnaryOp(Operator::Minus, ref factor) => {
-                match self.visit_expr(factor)? {
-                    Object::Primitive(Primitive::Integer(num)) => Ok(Object::Primitive(Primitive::Integer(-num))),
-                    Object::Primitive(Primitive::Float(num))   => Ok(Object::Primitive(Primitive::Float(-num))),
-                    _                                          => Err(String::from("Interpreter Error"))
-                }
-            },
+            &Expr::UnaryOp(Operator::Plus, ref factor)  => Ok(self.visit_expr(factor)?.unary_plus()?),
+            &Expr::UnaryOp(Operator::Minus, ref factor) => Ok(self.visit_expr(factor)?.unary_minus()?),
             _                                           => Err(String::from("Interpreter Error"))
         };
     }
@@ -232,6 +227,13 @@ impl Interpreter {
         return match node {
             &Expr::Float(i) => Ok(Object::Primitive(Primitive::Float(i))),
             _               => Err(String::from("Interpreter Error"))
+        };
+    }
+
+    fn visit_string(&mut self, node: &Expr) -> Result<Object, String> {
+        return match node {
+            &Expr::String(ref s) => Ok(Object::Primitive(Primitive::String(s.clone()))),
+            _                    => Err(String::from("Interpreter Error"))
         };
     }
 

@@ -103,9 +103,31 @@ impl<'a> Lexer<'a> {
             "VAR"       => Ok(Token::VAR),
             "INTEGER"   => Ok(Token::INTEGER),
             "REAL"      => Ok(Token::REAL),
+            "STRING"    => Ok(Token::STRING),
             "div"       => Ok(Token::INTEGER_DIV),
             id          => Ok(Token::ID(id.to_string()))
         };
+    }
+
+    fn string(&mut self) -> Result<Token, String> {
+        match self.source.current_char() {
+            Some('\'') => Ok(()),
+            _          => Err("Internal Lexer Error")
+        }?;
+
+        let final_string: String = self.source.by_ref()
+            .peeking_take_while(| c: &char | c != &'\'')
+            .fold(String::from(""), | mut acc: String, next_char: char | {
+                acc.push(next_char);
+                return acc;
+            });
+
+        match self.source.next() {
+            Some('\'') => Ok(()),
+            _          => Err("Internal Lexer Error")
+        }?;
+
+        return Ok(Token::STRING_LITERAL(final_string));
     }
 
     fn assign(&mut self) -> Result<Token, String> {
@@ -125,6 +147,7 @@ impl<'a> Lexer<'a> {
                 Some(&'=') => self.assign(),
                 _          => Ok(Token::COLON)
             },
+            Some('\'')                                   => self.string(),
             Some(',')                                    => Ok(Token::COMMA),
             Some('.')                                    => Ok(Token::DOT),
             Some(';')                                    => Ok(Token::SEMI),
