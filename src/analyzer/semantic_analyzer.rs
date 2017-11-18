@@ -20,6 +20,7 @@ use super::symbol_table::SymbolTable;
 use super::symbol::Symbol;
 use super::symbol::VarSymbol;
 use super::symbol::ProcedureSymbol;
+use super::built_ins;
 
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -49,12 +50,19 @@ impl SemanticAnalyzer {
         }
     }
 
+    fn init_built_ins(&mut self) -> Result<(), String> {
+        self.scope()?.define(built_ins::writeln_procedure());
+
+        return Ok(());
+    }
+
     fn visit_program(&mut self, node: &Program) -> Result<(), String> {
         return match node {
             &Program::Program(ref var, ref block) => {
                 match var {
                     &Variable::Var(ref name) => {
                         self.enter_scope(name.to_owned());
+                        self.init_built_ins()?;
                     }
                 };
 

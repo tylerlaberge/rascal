@@ -21,6 +21,8 @@ use std::fmt;
 use super::scope::Scope;
 use super::object::Object;
 use super::object::Primitive;
+use super::object::BuiltInFunction;
+use super::built_ins;
 
 pub struct Interpreter {
     scope: Option<Scope>
@@ -47,12 +49,19 @@ impl Interpreter {
         };
     }
 
+    fn init_built_ins(&mut self) -> Result<(), String> {
+        self.scope()?.set(String::from("writeln"), Object::BuiltInFunction(BuiltInFunction::WriteLn(built_ins::writeln)));
+
+        return Ok(());
+    }
+
     fn visit_program(&mut self, node: &Program) -> Result<(), String> {
         return match node {
             &Program::Program(ref var, ref block) => {
                 match var {
                     &Variable::Var(ref name) => {
                         self.enter_scope(name.to_owned());
+                        self.init_built_ins()?;
                     }
                 };
 
@@ -163,6 +172,7 @@ impl Interpreter {
             &ProcedureCall::Call(Variable::Var(ref procedure_name), ProcedureParameters::Parameters(ref given_variables)) => {
                 let procedure = match self.scope()?.get(procedure_name) {
                     Some(&Object::Procedure(ref name, ref declared_params, ref block)) => Ok(Object::Procedure(name.clone(), declared_params.to_vec(), block.clone())),
+                    Some(&Object::BuiltInFunction(ref func))                           => Ok(Object::BuiltInFunction(func.clone())),
                     _                                                                  => Err(String::from("Procedure Call Interpreter Error"))
                 }?;
 
@@ -180,7 +190,22 @@ impl Interpreter {
 
                         Ok(())
                     },
-                    _                                                         => Err(String::from("Procedure Call Interpreter Error"))
+                    Object::BuiltInFunction(BuiltInFunction::WriteLn(func)) => {
+                        if given_variables.len() != 1 {
+                            Err(String::from("Built in function writeln expected 1 parameter"))
+                        } else {
+                            let variable = &given_variables[0];
+                            let var_name = match variable {
+                                &Variable::Var(ref name) => Ok(name),
+                                _                        => Err(String::from("Unreachable but compiler won't stop yelling"))
+                            }?;
+                            match self.scope()?.get(var_name) {
+                                Some(&Object::Primitive(Primitive::String(ref text))) => Ok(func(text.clone())),
+                                _                                                     => Err(String::from("Built in function writeln expected String parameter"))
+                            }
+                        }
+                    },
+                    _                                                       => Err(String::from("Procedure Call Interpreter Error"))
                 }
             }
         };

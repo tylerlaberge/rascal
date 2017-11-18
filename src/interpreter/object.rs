@@ -5,7 +5,13 @@ use std::fmt;
 
 pub enum Object {
     Primitive(Primitive),
-    Procedure(String, Vec<String>, Block)
+    Procedure(String, Vec<String>, Block),
+    BuiltInFunction(BuiltInFunction)
+}
+
+#[derive(Clone)]
+pub enum BuiltInFunction {
+    WriteLn(fn(String) -> ())
 }
 
 #[derive(Debug)]
@@ -22,9 +28,11 @@ impl Object {
             &Object::Primitive(Primitive::Integer(i))     => Object::Primitive(Primitive::Integer(i)),
             &Object::Primitive(Primitive::Float(i))       => Object::Primitive(Primitive::Float(i)),
             &Object::Primitive(Primitive::String(ref s))  => Object::Primitive(Primitive::String(s.clone())),
-            &Object::Procedure(_, _, _)                   => panic!("Cannot clone procedure")
+            &Object::Procedure(_, _, _)                   => panic!("Cannot clone procedure"),
+            &Object::BuiltInFunction(_)                   => panic!("Cannot clone builtin")
         }
     }
+
     pub fn add(&self, other: &Self) -> Result<Self, String> {
         return match (self, other) {
             (&Object::Primitive(Primitive::Integer(ref left)), &Object::Primitive(Primitive::Integer(ref right)))
@@ -107,8 +115,9 @@ impl Object {
 impl Debug for Object {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         return match self {
-            &Object::Primitive(ref primitive)              => write!(f, "{:?}", primitive),
-            &Object::Procedure(ref name, ref variables, _) => write!(f, "Procedure<{}, {:?}>", name, variables)
+            &Object::Primitive(ref primitive)                     => write!(f, "{:?}", primitive),
+            &Object::Procedure(ref name, ref variables, _)        => write!(f, "Procedure<{}, {:?}>", name, variables),
+            &Object::BuiltInFunction(BuiltInFunction::WriteLn(_)) => write!(f, "BuiltInFunction<WriteLn, String>")
         };
     }
 }
