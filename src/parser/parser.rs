@@ -33,7 +33,7 @@ use super::ast::Operator;
 ///     assignment_statement  :: variable ASSIGN expr
 ///     variable              :: ID
 ///     procedure_call        :: variable LPAREN (procedure_parameters)? RPAREN
-///     procedure_parameters  :: variable | variable COMMA procedure_parameters
+///     procedure_parameters  :: expr | expr COMMA procedure_parameters
 ///     expr                  :: term ((PLUS | MINUS) term)*
 ///     term                  :: factor ((MUL | INTEGER_DIV | FLOAT_DIV) factor)*
 ///     factor                :: (PLUS | MINUS) factor | INTEGER_CONST | REAL_CONST | STRING_LITERAL | LPAREN expr RPAREN | variable
@@ -314,14 +314,14 @@ impl<'a> Parser<'a> {
     }
 
     /// <pre>
-    ///     procedure_parameters :: variable | variable COMMA procedure_parameters
+    ///     procedure_parameters :: expr | expr COMMA procedure_parameters
     /// </pre>
     fn procedure_parameters(&mut self) -> Result<ProcedureParameters, String> {
-        let mut parameters = vec![self.variable()?];
+        let mut parameters = vec![self.expr()?];
 
         while let Some(&Token::COMMA) = self.lexer.peek() {
             self.lexer.next(); // eat the comma
-            parameters.push(self.variable()?);
+            parameters.push(self.expr()?);
         }
 
         return Ok(ProcedureParameters::Parameters(parameters));

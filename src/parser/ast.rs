@@ -77,7 +77,7 @@ pub enum ProcedureCall {
 
 #[derive(Debug, Clone)]
 pub enum ProcedureParameters {
-    Parameters(Vec<Variable>)
+    Parameters(Vec<Expr>)
 }
 
 #[derive(Debug, Clone)]

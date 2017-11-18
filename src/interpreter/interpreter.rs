@@ -169,7 +169,7 @@ impl Interpreter {
 
     fn visit_procedure_call(&mut self, node: &ProcedureCall) -> Result<(), String> {
         return match node {
-            &ProcedureCall::Call(Variable::Var(ref procedure_name), ProcedureParameters::Parameters(ref given_variables)) => {
+            &ProcedureCall::Call(Variable::Var(ref procedure_name), ProcedureParameters::Parameters(ref given_parameters)) => {
                 let procedure = match self.scope()?.get(procedure_name) {
                     Some(&Object::Procedure(ref name, ref declared_params, ref block)) => Ok(Object::Procedure(name.clone(), declared_params.to_vec(), block.clone())),
                     Some(&Object::BuiltInFunction(ref func))                           => Ok(Object::BuiltInFunction(func.clone())),
@@ -180,9 +180,9 @@ impl Interpreter {
                     Object::Procedure(procedure_name, declared_params, block) => {
                         self.enter_scope(procedure_name);
 
-                        for (declared, given) in declared_params.iter().zip(given_variables.iter()) {
-                            let given_variable = self.visit_variable(given)?;
-                            self.scope()?.set(declared.to_owned(), given_variable);
+                        for (declared, given) in declared_params.iter().zip(given_parameters.iter()) {
+                            let given_parameter = self.visit_expr(given)?;
+                            self.scope()?.set(declared.to_owned(), given_parameter);
                         }
 
                         self.visit_block(&block)?;
@@ -191,17 +191,13 @@ impl Interpreter {
                         Ok(())
                     },
                     Object::BuiltInFunction(BuiltInFunction::WriteLn(func)) => {
-                        if given_variables.len() != 1 {
+                        if given_parameters.len() != 1 {
                             Err(String::from("Built in function writeln expected 1 parameter"))
                         } else {
-                            let variable = &given_variables[0];
-                            let var_name = match variable {
-                                &Variable::Var(ref name) => Ok(name),
-                                _                        => Err(String::from("Unreachable but compiler won't stop yelling"))
-                            }?;
-                            match self.scope()?.get(var_name) {
-                                Some(&Object::Primitive(Primitive::String(ref text))) => Ok(func(text.clone())),
-                                _                                                     => Err(String::from("Built in function writeln expected String parameter"))
+                            let parameter = self.visit_expr(&given_parameters[0])?;
+                            match parameter {
+                                Object::Primitive(Primitive::String(text)) => Ok(func(text)),
+                                _                                          => Err(String::from("Built in function writeln expected String parameter"))
                             }
                         }
                     },

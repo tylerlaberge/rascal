@@ -269,10 +269,10 @@ impl SemanticAnalyzer {
                 if declared_params.len() == given_params.len() {
                     for (declared, given) in declared_params.iter().zip(given_params.iter()) {
                         match (declared, given) {
-                            (&VarSymbol::INTEGER(_), &VarSymbol::INTEGER(_)) => Ok(()),
-                            (&VarSymbol::REAL(_), &VarSymbol::REAL(_))       => Ok(()),
-                            (&VarSymbol::STRING(_), &VarSymbol::STRING(_))   => Ok(()),
-                            (expected, actual)                               => Err(String::from(format!("Procedure expected {:?}, but {:?} was given", expected, actual)))
+                            (&VarSymbol::INTEGER(_), &TypeSpec::INTEGER) => Ok(()),
+                            (&VarSymbol::REAL(_), &TypeSpec::REAL)       => Ok(()),
+                            (&VarSymbol::STRING(_), &TypeSpec::STRING)   => Ok(()),
+                            (expected, actual)                           => Err(String::from(format!("Procedure expected {:?}, but {:?} was given", expected, actual)))
                         }?;
                     }
                     Ok(())
@@ -283,19 +283,13 @@ impl SemanticAnalyzer {
         }
     }
 
-    fn visit_procedure_parameters(&mut self, node: &ProcedureParameters) -> Result<Vec<VarSymbol>, String> {
+    fn visit_procedure_parameters(&mut self, node: &ProcedureParameters) -> Result<Vec<TypeSpec>, String> {
         return match node {
-            &ProcedureParameters::Parameters(ref variables) => {
-                let mut parameters: Vec<VarSymbol> = vec![];
-                let mut variable_iter = variables.iter();
-                while let Some(&Variable::Var(ref name)) = variable_iter.next() {
-                    match self.scope()?.lookup(name) {
-                        Some(&Symbol::Var(ref var_symbol)) => {
-                            parameters.push(var_symbol.clone());
-                            Ok(())
-                        },
-                        _                                  => Err(String::from(format!("Unknown variable: {}", name)))
-                    }?;
+            &ProcedureParameters::Parameters(ref expressions) => {
+                let mut parameters: Vec<TypeSpec> = vec![];
+
+                for expr in expressions.iter() {
+                    parameters.push(self.visit_expr(expr)?);
                 }
 
                 Ok(parameters)
