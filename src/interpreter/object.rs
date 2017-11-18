@@ -3,6 +3,7 @@ use parser::ast::Block;
 use std::fmt::Debug;
 use std::fmt;
 
+#[derive(Clone)]
 pub enum Object {
     Primitive(Primitive),
     Procedure(String, Vec<String>, Block),
@@ -14,7 +15,7 @@ pub enum BuiltInFunction {
     WriteLn(fn(String) -> ())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Primitive {
     Integer(i32),
     Float(f32),
@@ -22,16 +23,6 @@ pub enum Primitive {
 }
 
 impl Object {
-
-    pub fn clone(&self) -> Self {
-        return match self {
-            &Object::Primitive(Primitive::Integer(i))     => Object::Primitive(Primitive::Integer(i)),
-            &Object::Primitive(Primitive::Float(i))       => Object::Primitive(Primitive::Float(i)),
-            &Object::Primitive(Primitive::String(ref s))  => Object::Primitive(Primitive::String(s.clone())),
-            &Object::Procedure(_, _, _)                   => panic!("Cannot clone procedure"),
-            &Object::BuiltInFunction(_)                   => panic!("Cannot clone builtin")
-        }
-    }
 
     pub fn add(&self, other: &Self) -> Result<Self, String> {
         return match (self, other) {
