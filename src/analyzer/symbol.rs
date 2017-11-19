@@ -1,10 +1,11 @@
 use std::clone::Clone;
 
+use parser::ast::TypeSpec;
 
 #[derive(Debug)]
 pub enum Symbol {
     Var(VarSymbol),
-    Procedure(ProcedureSymbol)
+    Callable(CallableSymbol)
 }
 
 #[derive(Debug)]
@@ -15,8 +16,9 @@ pub enum VarSymbol {
 }
 
 #[derive(Debug)]
-pub enum ProcedureSymbol {
-    Procedure(String, Vec<VarSymbol>)
+pub enum CallableSymbol {
+    Procedure(String, Vec<VarSymbol>),
+    Function(String, Vec<VarSymbol>, TypeSpec)
 }
 
 impl Symbol {
@@ -26,7 +28,8 @@ impl Symbol {
             &Symbol::Var(VarSymbol::INTEGER(ref name))
             | &Symbol::Var(VarSymbol::REAL(ref name))
             | &Symbol::Var(VarSymbol::STRING(ref name))
-            | &Symbol::Procedure(ProcedureSymbol::Procedure(ref name, _)) => name.clone()
+            | &Symbol::Callable(CallableSymbol::Procedure(ref name, _))
+            | &Symbol::Callable(CallableSymbol::Function(ref name, _, _)) => name.clone()
         };
     }
 }
@@ -35,7 +38,7 @@ impl Clone for Symbol {
     fn clone(&self) -> Self {
         return match self {
             &Symbol::Var(ref var_symbol)             => Symbol::Var(var_symbol.clone()),
-            &Symbol::Procedure(ref procedure_symbol) => Symbol::Procedure(procedure_symbol.clone())
+            &Symbol::Callable(ref callable_symbol)   => Symbol::Callable(callable_symbol.clone())
         }
     }
 }
@@ -49,10 +52,11 @@ impl Clone for VarSymbol {
     }
 }
 
-impl Clone for ProcedureSymbol {
+impl Clone for CallableSymbol {
     fn clone(&self) -> Self {
         return match self {
-            &ProcedureSymbol::Procedure(ref name, ref params) => ProcedureSymbol::Procedure(name.clone(), params.to_vec())
+            &CallableSymbol::Procedure(ref name, ref params)                 => CallableSymbol::Procedure(name.clone(), params.to_vec()),
+            &CallableSymbol::Function(ref name, ref params, ref return_type) => CallableSymbol::Function(name.clone(), params.to_vec(), return_type.clone())
         }
     }
 }

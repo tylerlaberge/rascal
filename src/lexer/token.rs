@@ -3,6 +3,7 @@
 pub enum Token {
     PROGRAM,
     PROCEDURE,
+    FUNCTION,
     VAR,
     COMMA,
     COLON,

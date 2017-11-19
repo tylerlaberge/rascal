@@ -11,6 +11,7 @@ pub enum Block {
 #[derive(Debug, Clone)]
 pub enum Declarations {
     ProcedureDeclarations(Vec<ProcedureDeclaration>),
+    FunctionDeclarations(Vec<FunctionDeclaration>),
     VariableDeclarations(Vec<VariableDeclaration>),
     Empty
 }
@@ -18,6 +19,11 @@ pub enum Declarations {
 #[derive(Debug, Clone)]
 pub enum ProcedureDeclaration {
     Procedure(String, FormalParameterList, Block)
+}
+
+#[derive(Debug, Clone)]
+pub enum FunctionDeclaration {
+    Function(String, FormalParameterList, Block, TypeSpec)
 }
 
 #[derive(Debug, Clone)]
@@ -39,7 +45,8 @@ pub enum VariableDeclaration {
 pub enum TypeSpec {
     INTEGER,
     REAL,
-    STRING
+    STRING,
+    UNIT
 }
 
 #[derive(Debug, Clone)]
@@ -56,7 +63,7 @@ pub enum StatementList {
 pub enum Statement {
     Compound(Compound),
     Assignment(Assignment),
-    ProcedureCall(ProcedureCall),
+    FunctionCall(FunctionCall),
     Empty
 }
 
@@ -71,12 +78,12 @@ pub enum Variable {
 }
 
 #[derive(Debug, Clone)]
-pub enum ProcedureCall {
-    Call(Variable, ProcedureParameters)
+pub enum FunctionCall {
+    Call(Variable, CallParameters)
 }
 
 #[derive(Debug, Clone)]
-pub enum ProcedureParameters {
+pub enum CallParameters {
     Parameters(Vec<Expr>)
 }
 
@@ -87,7 +94,8 @@ pub enum Expr {
     String(String),
     BinOp(Box<Expr>, Operator, Box<Expr>),
     UnaryOp(Operator, Box<Expr>),
-    Variable(Variable)
+    Variable(Variable),
+    FunctionCall(FunctionCall)
 }
 
 #[derive(Debug, Clone)]

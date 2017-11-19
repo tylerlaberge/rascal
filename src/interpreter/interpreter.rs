@@ -2,13 +2,14 @@ use parser::ast::Program;
 use parser::ast::Block;
 use parser::ast::Declarations;
 use parser::ast::ProcedureDeclaration;
+use parser::ast::FunctionDeclaration;
 use parser::ast::FormalParameterList;
 use parser::ast::FormalParameters;
 use parser::ast::Compound;
 use parser::ast::StatementList;
 use parser::ast::Statement;
-use parser::ast::ProcedureCall;
-use parser::ast::ProcedureParameters;
+use parser::ast::FunctionCall;
+use parser::ast::CallParameters;
 use parser::ast::Expr;
 use parser::ast::Assignment;
 use parser::ast::Variable;
@@ -73,12 +74,13 @@ impl Interpreter {
         };
     }
 
-    fn visit_block(&mut self, node: &Block) -> Result<(), String> {
+    fn visit_block(&mut self, node: &Block) -> Result<Object, String> {
         return match node {
             &Block::Block(ref declarations, ref compound) => {
                 self.visit_declarations(declarations)?;
-                self.visit_compound(compound)?;
-                Ok(())
+                let result = self.visit_compound(compound)?;
+
+                Ok(result)
             }
         };
     }
@@ -91,6 +93,11 @@ impl Interpreter {
                         self.visit_procedure_declaration(procedure_declaration)?;
                     }
                 },
+                &Declarations::FunctionDeclarations(ref function_declarations) => {
+                    for function_declaration in function_declarations {
+                        self.visit_function_declaration(function_declaration)?;
+                    }
+                }
                 _                                                                => ()
             };
         }
@@ -103,6 +110,18 @@ impl Interpreter {
                 let parameters = self.visit_formal_parameter_list(parameter_list)?;
 
                 self.scope()?.set(name.to_owned(), Object::Procedure(name.to_owned(), parameters, block.clone()));
+
+                Ok(())
+            }
+        };
+    }
+
+    fn visit_function_declaration(&mut self, node: &FunctionDeclaration) -> Result<(), String> {
+        return match node {
+            &FunctionDeclaration::Function(ref name, ref parameter_list, ref block, ref return_type) => {
+                let parameters = self.visit_formal_parameter_list(parameter_list)?;
+
+                self.scope()?.set(name.to_owned(), Object::Function(name.to_owned(), parameters, block.clone(), return_type.clone()));
 
                 Ok(())
             }
@@ -128,55 +147,69 @@ impl Interpreter {
         };
     }
 
-    fn visit_compound(&mut self, node: &Compound) -> Result<(), String> {
+    fn visit_compound(&mut self, node: &Compound) -> Result<Object, String> {
         return match node {
             &Compound::StatementList(ref statement_list) => self.visit_statement_list(statement_list)
         };
     }
 
-    fn visit_statement_list(&mut self, node: &StatementList) -> Result<(), String> {
-        match node {
+    fn visit_statement_list(&mut self, node: &StatementList) -> Result<Object, String> {
+        return match node {
             &StatementList::Statements(ref statements) => {
+                let mut result = Object::Unit;
                 for statement in statements {
-                    self.visit_statement(statement)?;
+                    result = self.visit_statement(statement)?;
                 }
+
+                Ok(result)
             }
         };
-
-        return Ok(());
     }
 
-    fn visit_statement(&mut self, node: &Statement) -> Result<(), String> {
+    fn visit_statement(&mut self, node: &Statement) -> Result<Object, String> {
         return match node {
             &Statement::Compound(ref compound)            => self.visit_compound(compound),
             &Statement::Assignment(ref assignment)        => self.visit_assignment(assignment),
-            &Statement::ProcedureCall(ref procedure_call) => self.visit_procedure_call(procedure_call),
-            &Statement::Empty                             => Ok(())
+            &Statement::FunctionCall(ref function_call)   => self.visit_function_call(function_call),
+            &Statement::Empty                             => Ok(Object::Unit)
         };
     }
 
-    fn visit_assignment(&mut self, node: &Assignment) -> Result<(), String> {
-        match node {
+    fn visit_assignment(&mut self, node: &Assignment) -> Result<Object, String> {
+        return match node {
             &Assignment::Assign(Variable::Var(ref name), ref expression) => {
                 let val = self.visit_expr(expression)?;
+                self.scope()?.set(name.clone(), val.clone());
 
-                self.scope()?.set(name.clone(), val);
+                Ok(val)
             }
         };
-
-        return Ok(());
     }
 
-    fn visit_procedure_call(&mut self, node: &ProcedureCall) -> Result<(), String> {
+    fn visit_function_call(&mut self, node: &FunctionCall) -> Result<Object, String> {
         return match node {
-            &ProcedureCall::Call(Variable::Var(ref procedure_name), ProcedureParameters::Parameters(ref given_parameters)) => {
-                let procedure = match self.scope()?.get(procedure_name) {
-                    Some(&Object::Procedure(ref name, ref declared_params, ref block)) => Ok(Object::Procedure(name.clone(), declared_params.to_vec(), block.clone())),
-                    Some(&Object::BuiltInFunction(ref func))                           => Ok(Object::BuiltInFunction(func.clone())),
-                    _                                                                  => Err(String::from("Procedure Call Interpreter Error"))
+            &FunctionCall::Call(Variable::Var(ref function_name), CallParameters::Parameters(ref given_parameters)) => {
+                let callable = match self.scope()?.get(function_name) {
+                    Some(&Object::Function(ref name, ref declared_params, ref block, ref return_type))  => Ok(Object::Function(name.clone(), declared_params.to_vec(), block.clone(), return_type.clone())),
+                    Some(&Object::Procedure(ref name, ref declared_params, ref block))                  => Ok(Object::Procedure(name.clone(), declared_params.to_vec(), block.clone())),
+                    Some(&Object::BuiltInFunction(ref func))                                            => Ok(Object::BuiltInFunction(func.clone())),
+                    _                                                                                   => Err(String::from("Callable Interpreter Error"))
                 }?;
 
-                match procedure {
+                match callable {
+                    Object::Function(function_name, declared_params, block, _) => {
+                        self.enter_scope(function_name);
+
+                        for (declared, given) in declared_params.iter().zip(given_parameters.iter()) {
+                            let given_parameter = self.visit_expr(given)?;
+                            self.scope()?.set(declared.to_owned(), given_parameter);
+                        }
+
+                        let result = self.visit_block(&block)?;
+                        self.leave_scope();
+
+                        Ok(result)
+                    },
                     Object::Procedure(procedure_name, declared_params, block) => {
                         self.enter_scope(procedure_name);
 
@@ -188,7 +221,7 @@ impl Interpreter {
                         self.visit_block(&block)?;
                         self.leave_scope();
 
-                        Ok(())
+                        Ok(Object::Unit)
                     },
                     Object::BuiltInFunction(BuiltInFunction::WriteLn(func)) => {
                         if given_parameters.len() != 1 {
@@ -209,12 +242,13 @@ impl Interpreter {
 
     fn visit_expr(&mut self, node: &Expr) -> Result<Object, String> {
         return match node {
-            &Expr::BinOp(_, _, _)         => self.visit_binop(node),
-            &Expr::UnaryOp(_, _)          => self.visit_unaryop(node),
-            &Expr::Int(_)                 => self.visit_int(node),
-            &Expr::Float(_)               => self.visit_float(node),
-            &Expr::String(_)              => self.visit_string(node),
-            &Expr::Variable(ref variable) => self.visit_variable(variable)
+            &Expr::BinOp(_, _, _)                  => self.visit_binop(node),
+            &Expr::UnaryOp(_, _)                   => self.visit_unaryop(node),
+            &Expr::Int(_)                          => self.visit_int(node),
+            &Expr::Float(_)                        => self.visit_float(node),
+            &Expr::String(_)                       => self.visit_string(node),
+            &Expr::Variable(ref variable)          => self.visit_variable(variable),
+            &Expr::FunctionCall(ref function_call) => self.visit_function_call(function_call)
         };
     }
 

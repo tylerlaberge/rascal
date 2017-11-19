@@ -1,18 +1,21 @@
 use parser::ast::Block;
+use parser::ast::TypeSpec;
 
 use std::fmt::Debug;
 use std::fmt;
 
 #[derive(Clone)]
 pub enum Object {
+    Unit,
     Primitive(Primitive),
     Procedure(String, Vec<String>, Block),
+    Function(String, Vec<String>, Block, TypeSpec),
     BuiltInFunction(BuiltInFunction)
 }
 
 #[derive(Clone)]
 pub enum BuiltInFunction {
-    WriteLn(fn(String) -> ())
+    WriteLn(fn(String) -> Object)
 }
 
 #[derive(Debug, Clone)]
@@ -106,9 +109,11 @@ impl Object {
 impl Debug for Object {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         return match self {
-            &Object::Primitive(ref primitive)                     => write!(f, "{:?}", primitive),
-            &Object::Procedure(ref name, ref variables, _)        => write!(f, "Procedure<{}, {:?}>", name, variables),
-            &Object::BuiltInFunction(BuiltInFunction::WriteLn(_)) => write!(f, "BuiltInFunction<WriteLn, String>")
+            &Object::Unit                                                  => write!(f, "<Unit>"),
+            &Object::Primitive(ref primitive)                              => write!(f, "{:?}", primitive),
+            &Object::Procedure(ref name, ref variables, _)                 => write!(f, "Procedure<{}, {:?}>", name, variables),
+            &Object::Function(ref name, ref variables, _, ref return_type) => write!(f, "Function<{}, {:?} -> {:?}>", name, variables, return_type),
+            &Object::BuiltInFunction(BuiltInFunction::WriteLn(_))          => write!(f, "BuiltInFunction<WriteLn, String>")
         };
     }
 }

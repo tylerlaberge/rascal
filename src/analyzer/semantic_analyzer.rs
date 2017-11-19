@@ -5,12 +5,13 @@ use parser::ast::ProcedureDeclaration;
 use parser::ast::FormalParameterList;
 use parser::ast::FormalParameters;
 use parser::ast::VariableDeclaration;
+use parser::ast::FunctionDeclaration;
 use parser::ast::Compound;
 use parser::ast::StatementList;
 use parser::ast::Statement;
 use parser::ast::TypeSpec;
-use parser::ast::ProcedureCall;
-use parser::ast::ProcedureParameters;
+use parser::ast::FunctionCall;
+use parser::ast::CallParameters;
 use parser::ast::Expr;
 use parser::ast::Assignment;
 use parser::ast::Variable;
@@ -19,7 +20,7 @@ use parser::ast::Operator;
 use super::symbol_table::SymbolTable;
 use super::symbol::Symbol;
 use super::symbol::VarSymbol;
-use super::symbol::ProcedureSymbol;
+use super::symbol::CallableSymbol;
 use super::built_ins;
 
 use std::fmt::Display;
@@ -74,13 +75,13 @@ impl SemanticAnalyzer {
         };
     }
 
-    fn visit_block(&mut self, node: &Block) -> Result<(), String> {
+    fn visit_block(&mut self, node: &Block) -> Result<TypeSpec, String> {
         return match node {
             &Block::Block(ref declarations, ref compound) => {
                 self.visit_declarations(declarations)?;
-                self.visit_compound(compound)?;
+                let return_type = self.visit_compound(compound)?;
 
-                Ok(())
+                Ok(return_type)
             }
         }
     }
@@ -91,6 +92,11 @@ impl SemanticAnalyzer {
                 &Declarations::ProcedureDeclarations(ref procedure_declarations) => {
                     for procedure_declaration in procedure_declarations {
                         self.visit_procedure_declaration(procedure_declaration)?;
+                    }
+                },
+                &Declarations::FunctionDeclarations(ref function_declarations) => {
+                    for function_declaration in function_declarations {
+                        self.visit_function_declaration(function_declaration)?;
                     }
                 },
                 &Declarations::VariableDeclarations(ref variable_declarations)   => {
@@ -109,7 +115,7 @@ impl SemanticAnalyzer {
             &ProcedureDeclaration::Procedure(ref name, ref parameter_list, ref block) => {
                 let parameters = self.visit_formal_parameter_list(parameter_list)?;
 
-                self.scope()?.define(Symbol::Procedure(ProcedureSymbol::Procedure(name.to_owned(), parameters.to_vec())));
+                self.scope()?.define(Symbol::Callable(CallableSymbol::Procedure(name.to_owned(), parameters.to_vec())));
                 self.enter_scope(name.to_owned());
 
                 for parameter in parameters {
@@ -117,6 +123,32 @@ impl SemanticAnalyzer {
                 }
 
                 self.visit_block(block)?;
+                self.leave_scope();
+
+                Ok(())
+            }
+        };
+    }
+
+    fn visit_function_declaration(&mut self, node: &FunctionDeclaration) -> Result<(), String> {
+        return match node {
+            &FunctionDeclaration::Function(ref name, ref parameter_list, ref block, ref return_type) => {
+                let parameters = self.visit_formal_parameter_list(parameter_list)?;
+
+                self.scope()?.define(Symbol::Callable(CallableSymbol::Function(name.to_owned(), parameters.to_vec(), return_type.clone())));
+                self.enter_scope(name.to_owned());
+
+                for parameter in parameters {
+                    self.scope()?.define(Symbol::Var(parameter));
+                }
+
+                match (self.visit_block(block)?, return_type) {
+                    (TypeSpec::STRING, &TypeSpec::STRING)   => Ok(()),
+                    (TypeSpec::INTEGER, &TypeSpec::INTEGER) => Ok(()),
+                    (TypeSpec::REAL, &TypeSpec::REAL)       => Ok(()),
+                    (actual, expected)                      => Err(String::from(format!("Mismatching return types. Declared return type of {:?}, actual return type of {:?}", expected, actual)))
+                }?;
+
                 self.leave_scope();
 
                 Ok(())
@@ -147,20 +179,21 @@ impl SemanticAnalyzer {
                     }
                     Ok(vars.to_vec())
                 },
-                &TypeSpec::REAL => {
+                &TypeSpec::REAL    => {
                     let mut vars: Vec<VarSymbol> = vec![];
                     for name in names {
                         vars.push(VarSymbol::REAL(name.to_owned()));
                     }
                     Ok(vars.to_vec())
                 },
-                &TypeSpec::STRING => {
+                &TypeSpec::STRING  => {
                     let mut vars: Vec<VarSymbol> = vec![];
                     for name in names {
                         vars.push(VarSymbol::STRING(name.to_owned()));
                     }
                     Ok(vars.to_vec())
-                }
+                },
+                _                  => Err(String::from("Semantic Error"))
             }
         };
     }
@@ -174,6 +207,8 @@ impl SemanticAnalyzer {
                         Some(_) => Err(String::from(format!("Variable declared more than once: {}", name)))
                     }?;
                 }
+
+                Ok(())
             },
             &VariableDeclaration::Variables(ref names, TypeSpec::INTEGER) => {
                 for name in names {
@@ -182,6 +217,8 @@ impl SemanticAnalyzer {
                         Some(_) => Err(String::from(format!("Variable declared more than once: {}", name)))
                     }?;
                 }
+
+                Ok(())
             },
             &VariableDeclaration::Variables(ref names, TypeSpec::STRING) => {
                 for name in names {
@@ -190,40 +227,44 @@ impl SemanticAnalyzer {
                         Some(_) => Err(String::from(format!("Variable declared more than once: {}", name)))
                     }?;
                 }
-            }
-        };
+
+                Ok(())
+            },
+            _                                                            => Err(String::from("Semantic Error"))
+        }?;
 
         return Ok(());
     }
 
-    fn visit_compound(&mut self, node: &Compound) -> Result<(), String> {
+    fn visit_compound(&mut self, node: &Compound) -> Result<TypeSpec, String> {
         return match node {
             &Compound::StatementList(ref statement_list) => self.visit_statement_list(statement_list)
         };
     }
 
-    fn visit_statement_list(&mut self, node: &StatementList) -> Result<(), String> {
-        match node {
+    fn visit_statement_list(&mut self, node: &StatementList) -> Result<TypeSpec, String> {
+        return match node {
             &StatementList::Statements(ref statements) => {
+                let mut last_type = TypeSpec::UNIT;
                 for statement in statements {
-                    self.visit_statement(statement)?;
+                    last_type = self.visit_statement(statement)?;
                 }
+
+                Ok(last_type)
             }
         };
-
-        return Ok(());
     }
 
-    fn visit_statement(&mut self, node: &Statement) -> Result<(), String> {
+    fn visit_statement(&mut self, node: &Statement) -> Result<TypeSpec, String> {
         return match node {
             &Statement::Compound(ref compound)            => self.visit_compound(compound),
             &Statement::Assignment(ref assignment)        => self.visit_assignment(assignment),
-            &Statement::ProcedureCall(ref procedure_call) => self.visit_procedure_call(procedure_call),
-            &Statement::Empty                             => Ok(())
+            &Statement::FunctionCall(ref function_call)   => self.visit_function_call(function_call),
+            &Statement::Empty                             => Ok(TypeSpec::UNIT)
         };
     }
 
-    fn visit_assignment(&mut self, node: &Assignment) -> Result<(), String> {
+    fn visit_assignment(&mut self, node: &Assignment) -> Result<TypeSpec, String> {
         return match node {
             &Assignment::Assign(Variable::Var(ref name), ref expression) => {
                 let symbol = match self.scope()?.lookup(name) {
@@ -231,40 +272,29 @@ impl SemanticAnalyzer {
                     None          => Err(String::from(format!("Variable {} was never defined", name)))
                 }?;
 
-                match symbol {
-                    Symbol::Var(VarSymbol::INTEGER(_)) =>
-                        match self.visit_expr(expression)? {
-                            TypeSpec::INTEGER  => Ok(()),
-                            _                  => Err(String::from("Can't assign mismatched types"))
-                        },
-                    Symbol::Var(VarSymbol::REAL(_))    =>
-                        match self.visit_expr(expression)? {
-                            TypeSpec::REAL => Ok(()),
-                            _              => Err(String::from("Can't assign mismatched types"))
-                        },
-                    Symbol::Var(VarSymbol::STRING(_))  =>
-                        match self.visit_expr(expression)? {
-                            TypeSpec::STRING => Ok(()),
-                            _                => Err(String::from("Can't assign mismatched types"))
-                        },
-                    _                                  => Err(String::from("Can't assign procedure"))
-
+                match (symbol, self.visit_expr(expression)?) {
+                    (Symbol::Var(VarSymbol::INTEGER(_)), TypeSpec::INTEGER) => Ok(TypeSpec::INTEGER),
+                    (Symbol::Var(VarSymbol::REAL(_)), TypeSpec::REAL)       => Ok(TypeSpec::REAL),
+                    (Symbol::Var(VarSymbol::STRING(_)), TypeSpec::STRING)   => Ok(TypeSpec::STRING),
+                    (_, TypeSpec::UNIT)                                     => Err(String::from("Can't assign procedure call")),
+                    (_, _)                                                  => Err(String::from("Can't assign mismatched types"))
                 }
             }
         };
     }
 
-    fn visit_procedure_call(&mut self, node: &ProcedureCall) -> Result<(), String> {
+    fn visit_function_call(&mut self, node: &FunctionCall) -> Result<TypeSpec, String> {
         return match node {
-            &ProcedureCall::Call(Variable::Var(ref name), ref parameters) => {
-                let procedure =  match self.scope()?.lookup(name) {
-                    Some(&Symbol::Procedure(ref procedure)) => Ok(procedure.clone()),
-                    _                                       => Err(String::from("Unknown procedure"))
+            &FunctionCall::Call(Variable::Var(ref name), ref parameters) => {
+                let callable =  match self.scope()?.lookup(name) {
+                    Some(&Symbol::Callable(ref callable))   => Ok(callable.clone()),
+                    _                                       => Err(String::from("Unknown callable"))
                 }?;
-                let declared_params = match procedure {
-                    ProcedureSymbol::Procedure(_, declared_params) => declared_params
+                let declared_params = match callable {
+                    CallableSymbol::Procedure(_, ref declared_params)  => declared_params.to_vec(),
+                    CallableSymbol::Function(_, ref declared_params, _) => declared_params.to_vec()
                 };
-                let given_params = self.visit_procedure_parameters(parameters)?;
+                let given_params = self.visit_call_parameters(parameters)?;
 
                 if declared_params.len() == given_params.len() {
                     for (declared, given) in declared_params.iter().zip(given_params.iter()) {
@@ -272,10 +302,13 @@ impl SemanticAnalyzer {
                             (&VarSymbol::INTEGER(_), &TypeSpec::INTEGER) => Ok(()),
                             (&VarSymbol::REAL(_), &TypeSpec::REAL)       => Ok(()),
                             (&VarSymbol::STRING(_), &TypeSpec::STRING)   => Ok(()),
-                            (expected, actual)                           => Err(String::from(format!("Procedure expected {:?}, but {:?} was given", expected, actual)))
+                            (expected, actual)                           => Err(String::from(format!("Callable expected {:?}, but {:?} was given", expected, actual)))
                         }?;
                     }
-                    Ok(())
+                    match callable {
+                        CallableSymbol::Procedure(_, _)           => Ok(TypeSpec::UNIT),
+                        CallableSymbol::Function(_, _, type_spec) => Ok(type_spec)
+                    }
                 } else {
                     Err(String::from("Wrong number of arguments"))
                 }
@@ -283,9 +316,9 @@ impl SemanticAnalyzer {
         }
     }
 
-    fn visit_procedure_parameters(&mut self, node: &ProcedureParameters) -> Result<Vec<TypeSpec>, String> {
+    fn visit_call_parameters(&mut self, node: &CallParameters) -> Result<Vec<TypeSpec>, String> {
         return match node {
-            &ProcedureParameters::Parameters(ref expressions) => {
+            &CallParameters::Parameters(ref expressions) => {
                 let mut parameters: Vec<TypeSpec> = vec![];
 
                 for expr in expressions.iter() {
@@ -299,12 +332,13 @@ impl SemanticAnalyzer {
 
     fn visit_expr(&mut self, node: &Expr) -> Result<TypeSpec, String> {
         return match node {
-            &Expr::BinOp(_, _, _)         => self.visit_binop(node),
-            &Expr::UnaryOp(_, _)          => self.visit_unaryop(node),
-            &Expr::Int(_)                 => self.visit_int(node),
-            &Expr::Float(_)               => self.visit_float(node),
-            &Expr::String(_)              => self.visit_string(node),
-            &Expr::Variable(ref variable) => self.visit_variable(variable)
+            &Expr::BinOp(_, _, _)                  => self.visit_binop(node),
+            &Expr::UnaryOp(_, _)                   => self.visit_unaryop(node),
+            &Expr::Int(_)                          => self.visit_int(node),
+            &Expr::Float(_)                        => self.visit_float(node),
+            &Expr::String(_)                       => self.visit_string(node),
+            &Expr::Variable(ref variable)          => self.visit_variable(variable),
+            &Expr::FunctionCall(ref function_call) => self.visit_function_call(function_call)
         };
     }
 
@@ -318,6 +352,8 @@ impl SemanticAnalyzer {
                     (TypeSpec::STRING, &Operator::Multiply, TypeSpec::STRING)      => Err(String::from("Cannot do multiplication with string types")),
                     (TypeSpec::STRING, &Operator::FloatDivide, TypeSpec::STRING)   => Err(String::from("Cannot do float division with string types")),
                     (TypeSpec::STRING, &Operator::IntegerDivide, TypeSpec::STRING) => Err(String::from("Cannot do integer division with string types")),
+                    (TypeSpec::UNIT, _, _)                                         => Err(String::from("Cannot use procedure calls in expressions")),
+                    (_, _, TypeSpec::UNIT)                                         => Err(String::from("Cannot use procedure calls in expressions")),
                     (TypeSpec::INTEGER, _, TypeSpec::INTEGER)                      => Ok(TypeSpec::INTEGER),
                     (TypeSpec::REAL, _, TypeSpec::REAL)                            => Ok(TypeSpec::REAL),
                     (TypeSpec::STRING, _, TypeSpec::STRING)                        => Ok(TypeSpec::STRING),
@@ -331,6 +367,7 @@ impl SemanticAnalyzer {
         return match expr {
             &Expr::UnaryOp(_, ref factor) => match self.visit_expr(factor)? {
                 TypeSpec::STRING => Err(String::from("Cannot do unary operations with string type")),
+                TypeSpec::UNIT   => Err(String::from("Cannot do unary operations with procedure calls")),
                 type_spec        => Ok(type_spec),
             },
             _                             => Err(String::from("Semantic Error"))

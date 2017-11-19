@@ -98,6 +98,7 @@ impl<'a> Lexer<'a> {
         return match final_id.as_str() {
             "PROGRAM"   => Ok(Token::PROGRAM),
             "PROCEDURE" => Ok(Token::PROCEDURE),
+            "FUNCTION"  => Ok(Token::FUNCTION),
             "BEGIN"     => Ok(Token::BEGIN),
             "END"       => Ok(Token::END),
             "VAR"       => Ok(Token::VAR),
