@@ -89,20 +89,31 @@ pub enum CallParameters {
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    Int(i32),
-    Float(f32),
-    String(String),
-    BinOp(Box<Expr>, Operator, Box<Expr>),
-    UnaryOp(Operator, Box<Expr>),
+    BinOp(Box<Expr>, BinaryOperator, Box<Expr>),
+    UnaryOp(UnaryOperator, Box<Expr>),
+    Literal(Literal),
     Variable(Variable),
     FunctionCall(FunctionCall)
 }
 
 #[derive(Debug, Clone)]
-pub enum Operator {
+pub enum BinaryOperator {
     Plus,
     Minus,
     Multiply,
     IntegerDivide,
     FloatDivide
+}
+
+#[derive(Debug, Clone)]
+pub enum UnaryOperator {
+    Plus,
+    Minus
+}
+
+#[derive(Debug, Clone)]
+pub enum Literal {
+    Int(i32),
+    Float(f32),
+    String(String)
 }

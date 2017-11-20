@@ -13,9 +13,10 @@ use parser::ast::TypeSpec;
 use parser::ast::FunctionCall;
 use parser::ast::CallParameters;
 use parser::ast::Expr;
+use parser::ast::Literal;
 use parser::ast::Assignment;
 use parser::ast::Variable;
-use parser::ast::Operator;
+use parser::ast::BinaryOperator;
 
 use super::symbol_table::SymbolTable;
 use super::symbol::Symbol;
@@ -334,9 +335,7 @@ impl SemanticAnalyzer {
         return match node {
             &Expr::BinOp(_, _, _)                  => self.visit_binop(node),
             &Expr::UnaryOp(_, _)                   => self.visit_unaryop(node),
-            &Expr::Int(_)                          => self.visit_int(node),
-            &Expr::Float(_)                        => self.visit_float(node),
-            &Expr::String(_)                       => self.visit_string(node),
+            &Expr::Literal(ref literal)            => self.visit_literal(literal),
             &Expr::Variable(ref variable)          => self.visit_variable(variable),
             &Expr::FunctionCall(ref function_call) => self.visit_function_call(function_call)
         };
@@ -346,53 +345,40 @@ impl SemanticAnalyzer {
         return match expr {
             &Expr::BinOp(ref left, ref operator, ref right) =>
                 match (self.visit_expr(left)?, operator, self.visit_expr(right)?) {
-                    (TypeSpec::INTEGER, &Operator::FloatDivide, TypeSpec::INTEGER) => Err(String::from("Cannot do float division with integer types")),
-                    (TypeSpec::REAL, &Operator::IntegerDivide, TypeSpec::REAL)     => Err(String::from("Cannot do integer division with float types")),
-                    (TypeSpec::STRING, &Operator::Minus, TypeSpec::STRING)         => Err(String::from("Cannot do subtraction with string types")),
-                    (TypeSpec::STRING, &Operator::Multiply, TypeSpec::STRING)      => Err(String::from("Cannot do multiplication with string types")),
-                    (TypeSpec::STRING, &Operator::FloatDivide, TypeSpec::STRING)   => Err(String::from("Cannot do float division with string types")),
-                    (TypeSpec::STRING, &Operator::IntegerDivide, TypeSpec::STRING) => Err(String::from("Cannot do integer division with string types")),
-                    (TypeSpec::UNIT, _, _)                                         => Err(String::from("Cannot use procedure calls in expressions")),
-                    (_, _, TypeSpec::UNIT)                                         => Err(String::from("Cannot use procedure calls in expressions")),
-                    (TypeSpec::INTEGER, _, TypeSpec::INTEGER)                      => Ok(TypeSpec::INTEGER),
-                    (TypeSpec::REAL, _, TypeSpec::REAL)                            => Ok(TypeSpec::REAL),
-                    (TypeSpec::STRING, _, TypeSpec::STRING)                        => Ok(TypeSpec::STRING),
-                    _                                                              => Err(String::from("Mismatching types"))
+                    (TypeSpec::INTEGER, &BinaryOperator::FloatDivide, TypeSpec::INTEGER) => Err(String::from("Cannot do float division with integer types")),
+                    (TypeSpec::REAL, &BinaryOperator::IntegerDivide, TypeSpec::REAL)     => Err(String::from("Cannot do integer division with float types")),
+                    (TypeSpec::STRING, &BinaryOperator::Minus, TypeSpec::STRING)         => Err(String::from("Cannot do subtraction with string types")),
+                    (TypeSpec::STRING, &BinaryOperator::Multiply, TypeSpec::STRING)      => Err(String::from("Cannot do multiplication with string types")),
+                    (TypeSpec::STRING, &BinaryOperator::FloatDivide, TypeSpec::STRING)   => Err(String::from("Cannot do float division with string types")),
+                    (TypeSpec::STRING, &BinaryOperator::IntegerDivide, TypeSpec::STRING) => Err(String::from("Cannot do integer division with string types")),
+                    (TypeSpec::UNIT, _, _)                                               => Err(String::from("Cannot use procedure calls in expressions")),
+                    (_, _, TypeSpec::UNIT)                                               => Err(String::from("Cannot use procedure calls in expressions")),
+                    (TypeSpec::INTEGER, _, TypeSpec::INTEGER)                            => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::REAL, _, TypeSpec::REAL)                                  => Ok(TypeSpec::REAL),
+                    (TypeSpec::STRING, _, TypeSpec::STRING)                              => Ok(TypeSpec::STRING),
+                    _                                                                    => Err(String::from("Mismatching types"))
                 },
-            _                                                                      => Err(String::from("Semantic Error"))
+            _                                               => Err(String::from("Semantic Error"))
         };
     }
 
     fn visit_unaryop(&mut self, expr: &Expr) -> Result<TypeSpec, String> {
         return match expr {
-            &Expr::UnaryOp(_, ref factor) => match self.visit_expr(factor)? {
+            &Expr::UnaryOp(_, ref unary_expr) => match self.visit_expr(unary_expr)? {
                 TypeSpec::STRING => Err(String::from("Cannot do unary operations with string type")),
                 TypeSpec::UNIT   => Err(String::from("Cannot do unary operations with procedure calls")),
                 type_spec        => Ok(type_spec),
             },
-            _                             => Err(String::from("Semantic Error"))
+            _                                 => Err(String::from("Semantic Error"))
         };
     }
 
-    fn visit_int(&mut self, expr: &Expr) -> Result<TypeSpec, String> {
+    fn visit_literal(&mut self, expr: &Literal) -> Result<TypeSpec, String> {
         return match expr {
-            &Expr::Int(_) => Ok(TypeSpec::INTEGER),
-            _             => Err(String::from("Semantic Error"))
-        };
-    }
-
-    fn visit_float(&mut self, expr: &Expr) -> Result<TypeSpec, String> {
-        return match expr {
-            &Expr::Float(_) => Ok(TypeSpec::REAL),
-            _               => Err(String::from("Semantic Error"))
-        };
-    }
-
-    fn visit_string(&mut self, expr: &Expr) -> Result<TypeSpec, String> {
-        return match expr {
-            &Expr::String(_) => Ok(TypeSpec::STRING),
-            _                => Err(String::from("Semantic Error"))
-        };
+            &Literal::Int(_)    => Ok(TypeSpec::INTEGER),
+            &Literal::Float(_)  => Ok(TypeSpec::REAL),
+            &Literal::String(_) => Ok(TypeSpec::STRING)
+        }
     }
 
     fn visit_variable(&mut self, node: &Variable) -> Result<TypeSpec, String> {

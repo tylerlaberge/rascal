@@ -11,9 +11,11 @@ use parser::ast::Statement;
 use parser::ast::FunctionCall;
 use parser::ast::CallParameters;
 use parser::ast::Expr;
+use parser::ast::Literal;
 use parser::ast::Assignment;
 use parser::ast::Variable;
-use parser::ast::Operator;
+use parser::ast::BinaryOperator;
+use parser::ast::UnaryOperator;
 
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -244,9 +246,7 @@ impl Interpreter {
         return match node {
             &Expr::BinOp(_, _, _)                  => self.visit_binop(node),
             &Expr::UnaryOp(_, _)                   => self.visit_unaryop(node),
-            &Expr::Int(_)                          => self.visit_int(node),
-            &Expr::Float(_)                        => self.visit_float(node),
-            &Expr::String(_)                       => self.visit_string(node),
+            &Expr::Literal(ref literal)            => self.visit_literal(literal),
             &Expr::Variable(ref variable)          => self.visit_variable(variable),
             &Expr::FunctionCall(ref function_call) => self.visit_function_call(function_call)
         };
@@ -254,41 +254,28 @@ impl Interpreter {
 
     fn visit_binop(&mut self, node: &Expr) -> Result<Object, String> {
         return match node {
-            &Expr::BinOp(ref left, Operator::Plus, ref right)          => Ok(self.visit_expr(left)?.add(&self.visit_expr(right)?)?),
-            &Expr::BinOp(ref left, Operator::Minus, ref right)         => Ok(self.visit_expr(left)?.subtract(&self.visit_expr(right)?)?),
-            &Expr::BinOp(ref left, Operator::Multiply, ref right)      => Ok(self.visit_expr(left)?.multiply(&self.visit_expr(right)?)?),
-            &Expr::BinOp(ref left, Operator::FloatDivide, ref right)   => Ok(self.visit_expr(left)?.float_divide(&self.visit_expr(right)?)?),
-            &Expr::BinOp(ref left, Operator::IntegerDivide, ref right) => Ok(self.visit_expr(left)?.integer_divide(&self.visit_expr(right)?)?),
-            _                                                          => Err(String::from("Interpreter Error"))
+            &Expr::BinOp(ref left, BinaryOperator::Plus, ref right)          => Ok(self.visit_expr(left)?.add(&self.visit_expr(right)?)?),
+            &Expr::BinOp(ref left, BinaryOperator::Minus, ref right)         => Ok(self.visit_expr(left)?.subtract(&self.visit_expr(right)?)?),
+            &Expr::BinOp(ref left, BinaryOperator::Multiply, ref right)      => Ok(self.visit_expr(left)?.multiply(&self.visit_expr(right)?)?),
+            &Expr::BinOp(ref left, BinaryOperator::FloatDivide, ref right)   => Ok(self.visit_expr(left)?.float_divide(&self.visit_expr(right)?)?),
+            &Expr::BinOp(ref left, BinaryOperator::IntegerDivide, ref right) => Ok(self.visit_expr(left)?.integer_divide(&self.visit_expr(right)?)?),
+            _                                                                => Err(String::from("Interpreter Error"))
         };
     }
 
     fn visit_unaryop(&mut self, node: &Expr) -> Result<Object, String> {
         return match node {
-            &Expr::UnaryOp(Operator::Plus, ref factor)  => Ok(self.visit_expr(factor)?.unary_plus()?),
-            &Expr::UnaryOp(Operator::Minus, ref factor) => Ok(self.visit_expr(factor)?.unary_minus()?),
-            _                                           => Err(String::from("Interpreter Error"))
+            &Expr::UnaryOp(UnaryOperator::Plus, ref factor)  => Ok(self.visit_expr(factor)?.unary_plus()?),
+            &Expr::UnaryOp(UnaryOperator::Minus, ref factor) => Ok(self.visit_expr(factor)?.unary_minus()?),
+            _                                                => Err(String::from("Interpreter Error"))
         };
     }
 
-    fn visit_int(&mut self, node: &Expr) -> Result<Object, String> {
+    fn visit_literal(&mut self, node: &Literal) -> Result<Object, String> {
         return match node {
-            &Expr::Int(i) => Ok(Object::Primitive(Primitive::Integer(i))),
-            _             => Err(String::from("Interpreter Error"))
-        };
-    }
-
-    fn visit_float(&mut self, node: &Expr) -> Result<Object, String> {
-        return match node {
-            &Expr::Float(i) => Ok(Object::Primitive(Primitive::Float(i))),
-            _               => Err(String::from("Interpreter Error"))
-        };
-    }
-
-    fn visit_string(&mut self, node: &Expr) -> Result<Object, String> {
-        return match node {
-            &Expr::String(ref s) => Ok(Object::Primitive(Primitive::String(s.clone()))),
-            _                    => Err(String::from("Interpreter Error"))
+            &Literal::Int(i)        => Ok(Object::Primitive(Primitive::Integer(i))),
+            &Literal::Float(f)      => Ok(Object::Primitive(Primitive::Float(f))),
+            &Literal::String(ref s) => Ok(Object::Primitive(Primitive::String(s.clone())))
         };
     }
 
@@ -300,7 +287,7 @@ impl Interpreter {
                     None         => Err(String::from(format!("Unknown variable: {}", name)))
                 }
             }
-        }
+        };
     }
 
     fn enter_scope(&mut self, name: String) {
