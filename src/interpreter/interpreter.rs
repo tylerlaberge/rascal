@@ -11,6 +11,9 @@ use parser::ast::Statement;
 use parser::ast::FunctionCall;
 use parser::ast::CallParameters;
 use parser::ast::Expr;
+use parser::ast::UnaryOpExpr;
+use parser::ast::BinaryOpExpr;
+use parser::ast::GroupedExpr;
 use parser::ast::Literal;
 use parser::ast::Assignment;
 use parser::ast::Variable;
@@ -244,30 +247,35 @@ impl Interpreter {
 
     fn visit_expr(&mut self, node: &Expr) -> Result<Object, String> {
         return match node {
-            &Expr::BinOp(_, _, _)                  => self.visit_binop(node),
-            &Expr::UnaryOp(_, _)                   => self.visit_unaryop(node),
+            &Expr::UnaryOp(ref unaryop_expr)       => self.visit_unaryop(unaryop_expr),
+            &Expr::BinOp(ref binop_expr)           => self.visit_binop(binop_expr),
+            &Expr::Group(ref group_expr)           => self.visit_group(group_expr),
             &Expr::Literal(ref literal)            => self.visit_literal(literal),
             &Expr::Variable(ref variable)          => self.visit_variable(variable),
             &Expr::FunctionCall(ref function_call) => self.visit_function_call(function_call)
         };
     }
 
-    fn visit_binop(&mut self, node: &Expr) -> Result<Object, String> {
+    fn visit_unaryop(&mut self, node: &UnaryOpExpr) -> Result<Object, String> {
         return match node {
-            &Expr::BinOp(ref left, BinaryOperator::Plus, ref right)          => Ok(self.visit_expr(left)?.add(&self.visit_expr(right)?)?),
-            &Expr::BinOp(ref left, BinaryOperator::Minus, ref right)         => Ok(self.visit_expr(left)?.subtract(&self.visit_expr(right)?)?),
-            &Expr::BinOp(ref left, BinaryOperator::Multiply, ref right)      => Ok(self.visit_expr(left)?.multiply(&self.visit_expr(right)?)?),
-            &Expr::BinOp(ref left, BinaryOperator::FloatDivide, ref right)   => Ok(self.visit_expr(left)?.float_divide(&self.visit_expr(right)?)?),
-            &Expr::BinOp(ref left, BinaryOperator::IntegerDivide, ref right) => Ok(self.visit_expr(left)?.integer_divide(&self.visit_expr(right)?)?),
-            _                                                                => Err(String::from("Interpreter Error"))
+            &UnaryOpExpr::UnaryOp(UnaryOperator::Plus, ref factor)  => Ok(self.visit_expr(factor)?.unary_plus()?),
+            &UnaryOpExpr::UnaryOp(UnaryOperator::Minus, ref factor) => Ok(self.visit_expr(factor)?.unary_minus()?),
         };
     }
 
-    fn visit_unaryop(&mut self, node: &Expr) -> Result<Object, String> {
+    fn visit_binop(&mut self, node: &BinaryOpExpr) -> Result<Object, String> {
         return match node {
-            &Expr::UnaryOp(UnaryOperator::Plus, ref factor)  => Ok(self.visit_expr(factor)?.unary_plus()?),
-            &Expr::UnaryOp(UnaryOperator::Minus, ref factor) => Ok(self.visit_expr(factor)?.unary_minus()?),
-            _                                                => Err(String::from("Interpreter Error"))
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Plus, ref right)          => Ok(self.visit_expr(left)?.add(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Minus, ref right)         => Ok(self.visit_expr(left)?.subtract(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Multiply, ref right)      => Ok(self.visit_expr(left)?.multiply(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::FloatDivide, ref right)   => Ok(self.visit_expr(left)?.float_divide(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::IntegerDivide, ref right) => Ok(self.visit_expr(left)?.integer_divide(&self.visit_expr(right)?)?),
+        };
+    }
+
+    fn visit_group(&mut self, node: &GroupedExpr) -> Result<Object, String> {
+        return match node {
+            &GroupedExpr::Group(ref expr) => self.visit_expr(expr)
         };
     }
 

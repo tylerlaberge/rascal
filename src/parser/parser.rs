@@ -1,5 +1,8 @@
 use lexer::Lexer;
 use lexer::Token;
+use super::precedence::Precedence;
+use super::parselet::PrefixParselet;
+use super::parselet::InfixParselet;
 use super::ast::Program;
 use super::ast::Block;
 use super::ast::Declarations;
@@ -17,9 +20,6 @@ use super::ast::Variable;
 use super::ast::FunctionCall;
 use super::ast::CallParameters;
 use super::ast::Expr;
-use super::ast::Literal;
-use super::ast::BinaryOperator;
-use super::ast::UnaryOperator;
 
 /// <pre>
 ///     program               :: PROGRAM variable SEMI block DOT
@@ -38,16 +38,14 @@ use super::ast::UnaryOperator;
 ///     variable              :: ID
 ///     function_call         :: variable LPAREN (call_parameters)? RPAREN
 ///     call_parameters       :: expr | expr COMMA call_parameters
-///     expr                  :: add_expr
-///     add_expr              :: mult_expr (( PLUS | MINUS ) mult_expr )*
-///     mult_expr             :: unary_expr (( MUL | INTEGER_DIV | FLOAT_DIV ) unary_expr)*
-///     unary_expr            :: (PLUS | MINUS) unary_expr | primary_expr
-///     primary_expr          :: literal | grouping | variable | function_call
+///     expr                  :: unaryop_expr | binop_expr | grouped_expr | function_call | literal | variable
+///     unaryop_expr          :: (PLUS | MINUS) expr
+///     binop_expr            :: expr (PLUS | MINUS | MUL | INTEGER_DIV | FLOAT_DIV) expr
+///     grouped_expr          :: LPAREN expr RPAREN
 ///     literal               :: INTEGER_CONST | REAL_CONST | STRING_LITERAL
-///     grouping              :: LPAREN expr RPAREN
 /// </pre>
 pub struct Parser<'a> {
-    lexer: Lexer<'a>,
+    pub lexer: Lexer<'a>
 }
 
 impl<'a> Parser<'a> {
@@ -56,6 +54,40 @@ impl<'a> Parser<'a> {
         return Parser { lexer };
     }
 
+    fn get_prefix_parselet(token: &Token) -> Result<PrefixParselet, String> {
+        return match token {
+            &Token::INTEGER_CONST(_)
+            | &Token::REAL_CONST(_)
+            | &Token::STRING_LITERAL(_ ) => Ok(PrefixParselet::Literal),
+            &Token::PLUS
+            | &Token::MINUS              => Ok(PrefixParselet::UnaryOperator(Precedence::UNARY as u32)),
+            &Token::LPAREN               => Ok(PrefixParselet::Grouping),
+            &Token::ID(_)                => Ok(PrefixParselet::Variable),
+            _                            => Err(String::from(format!("{:?} is not a prefix token", token)))
+        };
+    }
+
+    fn get_infix_parselet(token: &Token) -> Result<InfixParselet, String> {
+        return match token {
+            &Token::PLUS
+            | &Token::MINUS       => Ok(InfixParselet::BinaryOperator(Precedence::SUM as u32)),
+            &Token::MULTIPLY
+            | &Token::INTEGER_DIV
+            | &Token::FLOAT_DIV   => Ok(InfixParselet::BinaryOperator(Precedence::PRODUCT as u32)),
+            &Token::LPAREN        => Ok(InfixParselet::FunctionCall(Precedence::CALL as u32)),
+            _                     => Err(String::from(format!("{:?} is not an infix token", token)))
+        };
+    }
+
+    fn get_next_precedence(&mut self) -> u32 {
+        return match self.lexer.peek() {
+            Some(token) => match Parser::get_infix_parselet(token) {
+                Ok(parselet) => parselet.get_precedence(),
+                Err(_)       => 0
+            },
+            None        => 0
+        };
+    }
     /// <pre>
     ///     program :: PROGRAM variable SEMI block DOT
     /// </pre>
@@ -327,7 +359,7 @@ impl<'a> Parser<'a> {
     ///     assignment_statement :: variable ASSIGN expr
     /// </pre>
     fn assignment_statement(&mut self) -> Result<Assignment, String> {
-        return match (self.variable()?, self.lexer.next(), self.expr()?) {
+        return match (self.variable()?, self.lexer.next(), self.expr(None)?) {
             (var, Some(Token::ASSIGN), expr) => Ok(Assignment::Assign(var, expr)),
             _                                => Err(String::from("Assignment Parse Error"))
         }
@@ -371,113 +403,37 @@ impl<'a> Parser<'a> {
     /// <pre>
     ///     call_parameters :: expr | expr COMMA call_parameters
     /// </pre>
-    fn call_parameters(&mut self) -> Result<CallParameters, String> {
-        let mut parameters = vec![self.expr()?];
+    pub fn call_parameters(&mut self) -> Result<CallParameters, String> {
+        let mut parameters = vec![self.expr(None)?];
 
         while let Some(&Token::COMMA) = self.lexer.peek() {
             self.lexer.next(); // eat the comma
-            parameters.push(self.expr()?);
+            parameters.push(self.expr(None)?);
         }
 
         return Ok(CallParameters::Parameters(parameters));
     }
 
-    /// <pre>
-    ///     expr :: add_expr
-    /// </pre>
-    fn expr(&mut self) -> Result<Expr, String> {
-        return self.add_expr();
-    }
+    pub fn expr(&mut self, precedence: Option<u32>) -> Result<Expr, String> {
+        let precedence = precedence.unwrap_or(0);
+        let token = match self.lexer.next() {
+            Some(t) => Ok(t),
+            None    => Err(String::from("Expression Parse Error"))
+        }?;
+        let parselet = Parser::get_prefix_parselet(&token)?;
 
-    /// <pre>
-    ///     mult_expr (( PLUS | MINUS ) mult_expr )*
-    /// </pre>
-    fn add_expr(&mut self) -> Result<Expr, String> {
-        let mut expr = self.mult_expr()?;
+        let mut left = parselet.parse(self, &token)?;
 
-        while matches!(self.lexer.peek(), Some(&Token::PLUS) | Some(&Token::MINUS)) {
-            expr = match (self.lexer.next(), self.mult_expr()?) {
-                (Some(Token::PLUS), other_expr)  => Ok(Expr::BinOp(Box::new(expr), BinaryOperator::Plus, Box::new(other_expr))),
-                (Some(Token::MINUS), other_expr) => Ok(Expr::BinOp(Box::new(expr), BinaryOperator::Minus, Box::new(other_expr))),
-                _                                => Err(String::from("Additive Expression Parse Error"))
+        while precedence < self.get_next_precedence() {
+            let token = match self.lexer.next() {
+                Some(t) => Ok(t),
+                None    => Err(String::from("Expression Parse Error"))
             }?;
+            let parselet = Parser::get_infix_parselet(&token)?;
+            left = parselet.parse(self, &left, &token)?;
         }
 
-        return Ok(expr);
-    }
-
-    /// <pre>
-    ///     mult_expr :: unary_expr (( MUL | INTEGER_DIV | FLOAT_DIV ) unary_expr)*
-    /// </pre>
-    fn mult_expr(&mut self) -> Result<Expr, String> {
-        let mut expr = self.unary_expr()?;
-
-        while matches!(self.lexer.peek(), Some(&Token::MULTIPLY) | Some(&Token::INTEGER_DIV) | Some(&Token::FLOAT_DIV)) {
-            expr = match (self.lexer.next(), self.unary_expr()?) {
-                (Some(Token::MULTIPLY), other_expr)    => Ok(Expr::BinOp(Box::new(expr), BinaryOperator::Multiply, Box::new(other_expr))),
-                (Some(Token::INTEGER_DIV), other_expr) => Ok(Expr::BinOp(Box::new(expr), BinaryOperator::IntegerDivide, Box::new(other_expr))),
-                (Some(Token::FLOAT_DIV), other_expr)   => Ok(Expr::BinOp(Box::new(expr), BinaryOperator::FloatDivide, Box::new(other_expr))),
-                _                                      => Err(String::from("Multiplicative Expression Parse Error"))
-            }?;
-        }
-
-        return Ok(expr);
-    }
-
-    /// <pre>
-    ///     unary_expr :: (PLUS | MINUS) unary_expr | primary_expr
-    /// </pre>
-    fn unary_expr(&mut self) -> Result<Expr, String> {
-        return match self.lexer.peek() {
-            Some(&Token::PLUS)  => {
-                self.lexer.next();
-                Ok(Expr::UnaryOp(UnaryOperator::Plus, Box::new(self.unary_expr()?)))
-            },
-            Some(&Token::MINUS) => {
-                self.lexer.next();
-                Ok(Expr::UnaryOp(UnaryOperator::Minus, Box::new(self.unary_expr()?)))
-            },
-            _                   => self.primary_expr()
-        };
-    }
-
-    /// <pre>
-    ///     primary_expr :: literal | grouping | variable | function_call
-    /// </pre>
-    fn primary_expr(&mut self) -> Result<Expr, String> {
-        return match self.lexer.peek() {
-            Some(&Token::ID(_))               => match self.lexer.peek_ahead(1) {
-                Some(&Token::LPAREN)             => Ok(Expr::FunctionCall(self.function_call()?)),
-                _                                => Ok(Expr::Variable(self.variable()?))
-            },
-            Some(&Token::LPAREN)              => self.grouping(),
-            Some(&Token::INTEGER_CONST(_))
-            | Some(&Token::REAL_CONST(_))
-            | Some(&Token::STRING_LITERAL(_)) => Ok(Expr::Literal(self.literal()?)),
-            _                                 => Err(String::from("Primary Expression Parse Error"))
-        };
-    }
-
-    /// <pre>
-    ///     literal :: INTEGER_CONST | REAL_CONST | STRING_LITERAL
-    /// </pre>
-    fn literal(&mut self) -> Result<Literal, String> {
-        return match self.lexer.next() {
-            Some(Token::INTEGER_CONST(i))  => Ok(Literal::Int(i)),
-            Some(Token::REAL_CONST(i))     => Ok(Literal::Float(i)),
-            Some(Token::STRING_LITERAL(s)) => Ok(Literal::String(s)),
-            _                              => Err(String::from("Literal Parse Error"))
-        };
-    }
-
-    /// <pre>
-    ///     grouping :: LPAREN expr RPAREN
-    /// </pre>
-    fn grouping(&mut self) -> Result<Expr, String> {
-        return match (self.lexer.next(), self.expr()?, self.lexer.next()) {
-            (Some(Token::LPAREN), expr, Some(Token::RPAREN)) => Ok(expr),
-            _                                                => Err(String::from("Grouping Parse Error"))
-        };
+        return Ok(left);
     }
 
     pub fn parse(&mut self) -> Result<Program, String> {

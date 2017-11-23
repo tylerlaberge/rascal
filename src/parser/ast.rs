@@ -89,11 +89,28 @@ pub enum CallParameters {
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    BinOp(Box<Expr>, BinaryOperator, Box<Expr>),
-    UnaryOp(UnaryOperator, Box<Expr>),
+    UnaryOp(Box<UnaryOpExpr>),
+    BinOp(Box<BinaryOpExpr>),
+    Group(Box<GroupedExpr>),
+    FunctionCall(FunctionCall),
     Literal(Literal),
     Variable(Variable),
-    FunctionCall(FunctionCall)
+}
+
+#[derive(Debug, Clone)]
+pub enum UnaryOpExpr {
+    UnaryOp(UnaryOperator, Expr)
+}
+
+#[derive(Debug, Clone)]
+pub enum UnaryOperator {
+    Plus,
+    Minus
+}
+
+#[derive(Debug, Clone)]
+pub enum BinaryOpExpr {
+    BinaryOp(Expr, BinaryOperator, Expr)
 }
 
 #[derive(Debug, Clone)]
@@ -106,9 +123,8 @@ pub enum BinaryOperator {
 }
 
 #[derive(Debug, Clone)]
-pub enum UnaryOperator {
-    Plus,
-    Minus
+pub enum GroupedExpr {
+    Group(Expr)
 }
 
 #[derive(Debug, Clone)]

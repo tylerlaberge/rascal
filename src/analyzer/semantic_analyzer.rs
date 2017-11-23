@@ -13,10 +13,13 @@ use parser::ast::TypeSpec;
 use parser::ast::FunctionCall;
 use parser::ast::CallParameters;
 use parser::ast::Expr;
+use parser::ast::BinaryOpExpr;
+use parser::ast::BinaryOperator;
+use parser::ast::UnaryOpExpr;
+use parser::ast::GroupedExpr;
 use parser::ast::Literal;
 use parser::ast::Assignment;
 use parser::ast::Variable;
-use parser::ast::BinaryOperator;
 
 use super::symbol_table::SymbolTable;
 use super::symbol::Symbol;
@@ -333,17 +336,28 @@ impl SemanticAnalyzer {
 
     fn visit_expr(&mut self, node: &Expr) -> Result<TypeSpec, String> {
         return match node {
-            &Expr::BinOp(_, _, _)                  => self.visit_binop(node),
-            &Expr::UnaryOp(_, _)                   => self.visit_unaryop(node),
+            &Expr::UnaryOp(ref unaryop_expr)       => self.visit_unaryop(unaryop_expr),
+            &Expr::BinOp(ref binop_expr)           => self.visit_binop(binop_expr),
+            &Expr::Group(ref group_expr)           => self.visit_group(group_expr),
             &Expr::Literal(ref literal)            => self.visit_literal(literal),
             &Expr::Variable(ref variable)          => self.visit_variable(variable),
             &Expr::FunctionCall(ref function_call) => self.visit_function_call(function_call)
         };
     }
 
-    fn visit_binop(&mut self, expr: &Expr) -> Result<TypeSpec, String> {
+    fn visit_unaryop(&mut self, expr: &UnaryOpExpr) -> Result<TypeSpec, String> {
         return match expr {
-            &Expr::BinOp(ref left, ref operator, ref right) =>
+            &UnaryOpExpr::UnaryOp(_, ref unary_expr) => match self.visit_expr(unary_expr)? {
+                TypeSpec::STRING => Err(String::from("Cannot do unary operations with string type")),
+                TypeSpec::UNIT   => Err(String::from("Cannot do unary operations with procedure calls")),
+                type_spec        => Ok(type_spec),
+            }
+        };
+    }
+
+    fn visit_binop(&mut self, expr: &BinaryOpExpr) -> Result<TypeSpec, String> {
+        return match expr {
+            &BinaryOpExpr::BinaryOp(ref left, ref operator, ref right) =>
                 match (self.visit_expr(left)?, operator, self.visit_expr(right)?) {
                     (TypeSpec::INTEGER, &BinaryOperator::FloatDivide, TypeSpec::INTEGER) => Err(String::from("Cannot do float division with integer types")),
                     (TypeSpec::REAL, &BinaryOperator::IntegerDivide, TypeSpec::REAL)     => Err(String::from("Cannot do integer division with float types")),
@@ -357,19 +371,13 @@ impl SemanticAnalyzer {
                     (TypeSpec::REAL, _, TypeSpec::REAL)                                  => Ok(TypeSpec::REAL),
                     (TypeSpec::STRING, _, TypeSpec::STRING)                              => Ok(TypeSpec::STRING),
                     _                                                                    => Err(String::from("Mismatching types"))
-                },
-            _                                               => Err(String::from("Semantic Error"))
+                }
         };
     }
 
-    fn visit_unaryop(&mut self, expr: &Expr) -> Result<TypeSpec, String> {
+    fn visit_group(&mut self, expr: &GroupedExpr) -> Result<TypeSpec, String> {
         return match expr {
-            &Expr::UnaryOp(_, ref unary_expr) => match self.visit_expr(unary_expr)? {
-                TypeSpec::STRING => Err(String::from("Cannot do unary operations with string type")),
-                TypeSpec::UNIT   => Err(String::from("Cannot do unary operations with procedure calls")),
-                type_spec        => Ok(type_spec),
-            },
-            _                                 => Err(String::from("Semantic Error"))
+            &GroupedExpr::Group(ref grouped_expr) => self.visit_expr(grouped_expr)
         };
     }
 
