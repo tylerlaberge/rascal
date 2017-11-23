@@ -258,8 +258,9 @@ impl Interpreter {
 
     fn visit_unaryop(&mut self, node: &UnaryOpExpr) -> Result<Object, String> {
         return match node {
-            &UnaryOpExpr::UnaryOp(UnaryOperator::Plus, ref factor)  => Ok(self.visit_expr(factor)?.unary_plus()?),
-            &UnaryOpExpr::UnaryOp(UnaryOperator::Minus, ref factor) => Ok(self.visit_expr(factor)?.unary_minus()?),
+            &UnaryOpExpr::UnaryOp(UnaryOperator::Plus, ref expr)  => Ok(self.visit_expr(expr)?.unary_plus()?),
+            &UnaryOpExpr::UnaryOp(UnaryOperator::Minus, ref expr) => Ok(self.visit_expr(expr)?.unary_minus()?),
+            &UnaryOpExpr::UnaryOp(UnaryOperator::Not, ref expr)   => Ok(self.visit_expr(expr)?.negate()?)
         };
     }
 
@@ -270,6 +271,8 @@ impl Interpreter {
             &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Multiply, ref right)      => Ok(self.visit_expr(left)?.multiply(&self.visit_expr(right)?)?),
             &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::FloatDivide, ref right)   => Ok(self.visit_expr(left)?.float_divide(&self.visit_expr(right)?)?),
             &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::IntegerDivide, ref right) => Ok(self.visit_expr(left)?.integer_divide(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::And, ref right)           => Ok(self.visit_expr(left)?.and(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Or, ref right)            => Ok(self.visit_expr(left)?.or(&self.visit_expr(right)?)?),
         };
     }
 
@@ -283,7 +286,8 @@ impl Interpreter {
         return match node {
             &Literal::Int(i)        => Ok(Object::Primitive(Primitive::Integer(i))),
             &Literal::Float(f)      => Ok(Object::Primitive(Primitive::Float(f))),
-            &Literal::String(ref s) => Ok(Object::Primitive(Primitive::String(s.clone())))
+            &Literal::String(ref s) => Ok(Object::Primitive(Primitive::String(s.clone()))),
+            &Literal::Boolean(b)    => Ok(Object::Primitive(Primitive::Boolean(b)))
         };
     }
 

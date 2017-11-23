@@ -105,6 +105,12 @@ impl<'a> Lexer<'a> {
             "INTEGER"   => Ok(Token::INTEGER),
             "REAL"      => Ok(Token::REAL),
             "STRING"    => Ok(Token::STRING),
+            "BOOLEAN"   => Ok(Token::BOOLEAN),
+            "true"      => Ok(Token::BOOLEAN_CONST(true)),
+            "false"     => Ok(Token::BOOLEAN_CONST(false)),
+            "and"       => Ok(Token::AND),
+            "or"        => Ok(Token::OR),
+            "not"       => Ok(Token::NOT),
             "div"       => Ok(Token::INTEGER_DIV),
             id          => Ok(Token::ID(id.to_string()))
         };

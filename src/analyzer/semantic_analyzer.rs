@@ -16,6 +16,7 @@ use parser::ast::Expr;
 use parser::ast::BinaryOpExpr;
 use parser::ast::BinaryOperator;
 use parser::ast::UnaryOpExpr;
+use parser::ast::UnaryOperator;
 use parser::ast::GroupedExpr;
 use parser::ast::Literal;
 use parser::ast::Assignment;
@@ -150,6 +151,7 @@ impl SemanticAnalyzer {
                     (TypeSpec::STRING, &TypeSpec::STRING)   => Ok(()),
                     (TypeSpec::INTEGER, &TypeSpec::INTEGER) => Ok(()),
                     (TypeSpec::REAL, &TypeSpec::REAL)       => Ok(()),
+                    (TypeSpec::BOOLEAN, &TypeSpec::BOOLEAN) => Ok(()),
                     (actual, expected)                      => Err(String::from(format!("Mismatching return types. Declared return type of {:?}, actual return type of {:?}", expected, actual)))
                 }?;
 
@@ -197,6 +199,13 @@ impl SemanticAnalyzer {
                     }
                     Ok(vars.to_vec())
                 },
+                &TypeSpec::BOOLEAN  => {
+                    let mut vars: Vec<VarSymbol> = vec![];
+                    for name in names {
+                        vars.push(VarSymbol::BOOLEAN(name.to_owned()));
+                    }
+                    Ok(vars.to_vec())
+                },
                 _                  => Err(String::from("Semantic Error"))
             }
         };
@@ -228,6 +237,16 @@ impl SemanticAnalyzer {
                 for name in names {
                     match self.scope()?.local_lookup(name) {
                         None    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::STRING(name.to_owned())))),
+                        Some(_) => Err(String::from(format!("Variable declared more than once: {}", name)))
+                    }?;
+                }
+
+                Ok(())
+            },
+            &VariableDeclaration::Variables(ref names, TypeSpec::BOOLEAN) => {
+                for name in names {
+                    match self.scope()?.local_lookup(name) {
+                        None    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::BOOLEAN(name.to_owned())))),
                         Some(_) => Err(String::from(format!("Variable declared more than once: {}", name)))
                     }?;
                 }
@@ -280,6 +299,7 @@ impl SemanticAnalyzer {
                     (Symbol::Var(VarSymbol::INTEGER(_)), TypeSpec::INTEGER) => Ok(TypeSpec::INTEGER),
                     (Symbol::Var(VarSymbol::REAL(_)), TypeSpec::REAL)       => Ok(TypeSpec::REAL),
                     (Symbol::Var(VarSymbol::STRING(_)), TypeSpec::STRING)   => Ok(TypeSpec::STRING),
+                    (Symbol::Var(VarSymbol::BOOLEAN(_)), TypeSpec::BOOLEAN) => Ok(TypeSpec::BOOLEAN),
                     (_, TypeSpec::UNIT)                                     => Err(String::from("Can't assign procedure call")),
                     (_, _)                                                  => Err(String::from("Can't assign mismatched types"))
                 }
@@ -306,6 +326,7 @@ impl SemanticAnalyzer {
                             (&VarSymbol::INTEGER(_), &TypeSpec::INTEGER) => Ok(()),
                             (&VarSymbol::REAL(_), &TypeSpec::REAL)       => Ok(()),
                             (&VarSymbol::STRING(_), &TypeSpec::STRING)   => Ok(()),
+                            (&VarSymbol::BOOLEAN(_), &TypeSpec::BOOLEAN) => Ok(()),
                             (expected, actual)                           => Err(String::from(format!("Callable expected {:?}, but {:?} was given", expected, actual)))
                         }?;
                     }
@@ -347,10 +368,14 @@ impl SemanticAnalyzer {
 
     fn visit_unaryop(&mut self, expr: &UnaryOpExpr) -> Result<TypeSpec, String> {
         return match expr {
-            &UnaryOpExpr::UnaryOp(_, ref unary_expr) => match self.visit_expr(unary_expr)? {
-                TypeSpec::STRING => Err(String::from("Cannot do unary operations with string type")),
-                TypeSpec::UNIT   => Err(String::from("Cannot do unary operations with procedure calls")),
-                type_spec        => Ok(type_spec),
+            &UnaryOpExpr::UnaryOp(ref operator, ref unary_expr) =>
+                match (operator, self.visit_expr(unary_expr)?) {
+                    (&UnaryOperator::Plus, TypeSpec::INTEGER)  => Ok(TypeSpec::INTEGER),
+                    (&UnaryOperator::Minus, TypeSpec::INTEGER) => Ok(TypeSpec::INTEGER),
+                    (&UnaryOperator::Plus, TypeSpec::REAL)     => Ok(TypeSpec::REAL),
+                    (&UnaryOperator::Minus, TypeSpec::REAL)    => Ok(TypeSpec::REAL),
+                    (&UnaryOperator::Not, TypeSpec::BOOLEAN)   => Ok(TypeSpec::BOOLEAN),
+                    _                                          => Err(String::from("Mismatching Types"))
             }
         };
     }
@@ -359,18 +384,18 @@ impl SemanticAnalyzer {
         return match expr {
             &BinaryOpExpr::BinaryOp(ref left, ref operator, ref right) =>
                 match (self.visit_expr(left)?, operator, self.visit_expr(right)?) {
-                    (TypeSpec::INTEGER, &BinaryOperator::FloatDivide, TypeSpec::INTEGER) => Err(String::from("Cannot do float division with integer types")),
-                    (TypeSpec::REAL, &BinaryOperator::IntegerDivide, TypeSpec::REAL)     => Err(String::from("Cannot do integer division with float types")),
-                    (TypeSpec::STRING, &BinaryOperator::Minus, TypeSpec::STRING)         => Err(String::from("Cannot do subtraction with string types")),
-                    (TypeSpec::STRING, &BinaryOperator::Multiply, TypeSpec::STRING)      => Err(String::from("Cannot do multiplication with string types")),
-                    (TypeSpec::STRING, &BinaryOperator::FloatDivide, TypeSpec::STRING)   => Err(String::from("Cannot do float division with string types")),
-                    (TypeSpec::STRING, &BinaryOperator::IntegerDivide, TypeSpec::STRING) => Err(String::from("Cannot do integer division with string types")),
-                    (TypeSpec::UNIT, _, _)                                               => Err(String::from("Cannot use procedure calls in expressions")),
-                    (_, _, TypeSpec::UNIT)                                               => Err(String::from("Cannot use procedure calls in expressions")),
-                    (TypeSpec::INTEGER, _, TypeSpec::INTEGER)                            => Ok(TypeSpec::INTEGER),
-                    (TypeSpec::REAL, _, TypeSpec::REAL)                                  => Ok(TypeSpec::REAL),
-                    (TypeSpec::STRING, _, TypeSpec::STRING)                              => Ok(TypeSpec::STRING),
-                    _                                                                    => Err(String::from("Mismatching types"))
+                    (TypeSpec::INTEGER, &BinaryOperator::Plus, TypeSpec::INTEGER)          => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::INTEGER, &BinaryOperator::Minus, TypeSpec::INTEGER)         => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::INTEGER, &BinaryOperator::Multiply, TypeSpec::INTEGER)      => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::INTEGER, &BinaryOperator::IntegerDivide, TypeSpec::INTEGER) => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::REAL, &BinaryOperator::Plus, TypeSpec::REAL)                => Ok(TypeSpec::REAL),
+                    (TypeSpec::REAL, &BinaryOperator::Minus, TypeSpec::REAL)               => Ok(TypeSpec::REAL),
+                    (TypeSpec::REAL, &BinaryOperator::Multiply, TypeSpec::REAL)            => Ok(TypeSpec::REAL),
+                    (TypeSpec::REAL, &BinaryOperator::FloatDivide, TypeSpec::REAL)         => Ok(TypeSpec::REAL),
+                    (TypeSpec::STRING, &BinaryOperator::Plus, TypeSpec::STRING)            => Ok(TypeSpec::STRING),
+                    (TypeSpec::BOOLEAN, &BinaryOperator::And, TypeSpec::BOOLEAN)           => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::BOOLEAN, &BinaryOperator::Or, TypeSpec::BOOLEAN)            => Ok(TypeSpec::BOOLEAN),
+                    _                                                                      => Err(String::from("Mismatching types"))
                 }
         };
     }
@@ -383,9 +408,10 @@ impl SemanticAnalyzer {
 
     fn visit_literal(&mut self, expr: &Literal) -> Result<TypeSpec, String> {
         return match expr {
-            &Literal::Int(_)    => Ok(TypeSpec::INTEGER),
-            &Literal::Float(_)  => Ok(TypeSpec::REAL),
-            &Literal::String(_) => Ok(TypeSpec::STRING)
+            &Literal::Int(_)     => Ok(TypeSpec::INTEGER),
+            &Literal::Float(_)   => Ok(TypeSpec::REAL),
+            &Literal::String(_)  => Ok(TypeSpec::STRING),
+            &Literal::Boolean(_) => Ok(TypeSpec::BOOLEAN)
         }
     }
 
@@ -397,6 +423,7 @@ impl SemanticAnalyzer {
                         &Symbol::Var(VarSymbol::INTEGER(_)) => Ok(TypeSpec::INTEGER),
                         &Symbol::Var(VarSymbol::REAL(_))    => Ok(TypeSpec::REAL),
                         &Symbol::Var(VarSymbol::STRING(_))  => Ok(TypeSpec::STRING),
+                        &Symbol::Var(VarSymbol::BOOLEAN(_)) => Ok(TypeSpec::BOOLEAN),
                         _                                   => Err(String::from("Procedure cannot be a variable"))
                     },
                     None         => Err(String::from(format!("Unknown variable: {}", name)))

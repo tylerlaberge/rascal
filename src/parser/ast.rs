@@ -46,6 +46,7 @@ pub enum TypeSpec {
     INTEGER,
     REAL,
     STRING,
+    BOOLEAN,
     UNIT
 }
 
@@ -105,7 +106,8 @@ pub enum UnaryOpExpr {
 #[derive(Debug, Clone)]
 pub enum UnaryOperator {
     Plus,
-    Minus
+    Minus,
+    Not
 }
 
 #[derive(Debug, Clone)]
@@ -119,7 +121,9 @@ pub enum BinaryOperator {
     Minus,
     Multiply,
     IntegerDivide,
-    FloatDivide
+    FloatDivide,
+    And,
+    Or
 }
 
 #[derive(Debug, Clone)]
@@ -131,5 +135,6 @@ pub enum GroupedExpr {
 pub enum Literal {
     Int(i32),
     Float(f32),
-    String(String)
+    String(String),
+    Boolean(bool)
 }

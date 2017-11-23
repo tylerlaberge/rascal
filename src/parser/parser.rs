@@ -30,7 +30,7 @@ use super::ast::Expr;
 ///     formal_parameter_list :: formal_parameters | formal_parameters SEMI formal_parameter_list | empty
 ///     formal_parameters     :: ID (COMMA ID)* COLON type_spec
 ///     variable_declaration  :: ID (COMMA ID)* COLON type_spec SEMI
-///     type_spec             :: INTEGER | REAL
+///     type_spec             :: INTEGER | REAL | BOOLEAN
 ///     compound_statement    :: BEGIN statement_list END
 ///     statement_list        :: statement | statement SEMI statement_list
 ///     statement             :: compound_statement | assignment_statement | function_call | empty
@@ -39,10 +39,12 @@ use super::ast::Expr;
 ///     function_call         :: variable LPAREN (call_parameters)? RPAREN
 ///     call_parameters       :: expr | expr COMMA call_parameters
 ///     expr                  :: unaryop_expr | binop_expr | grouped_expr | function_call | literal | variable
-///     unaryop_expr          :: (PLUS | MINUS) expr
-///     binop_expr            :: expr (PLUS | MINUS | MUL | INTEGER_DIV | FLOAT_DIV) expr
+///     unaryop_expr          :: unaryop expr
+///     unaryop               :: PLUS | MINUS | not
+///     binop_expr            :: binop expr
+///     binop                 :: PLUS | MINUS | MUL | INTEGER_DIV | FLOAT_DIV | and | or
 ///     grouped_expr          :: LPAREN expr RPAREN
-///     literal               :: INTEGER_CONST | REAL_CONST | STRING_LITERAL
+///     literal               :: INTEGER_CONST | REAL_CONST | BOOLEAN_CONST | STRING_LITERAL
 /// </pre>
 pub struct Parser<'a> {
     pub lexer: Lexer<'a>
@@ -58,9 +60,11 @@ impl<'a> Parser<'a> {
         return match token {
             &Token::INTEGER_CONST(_)
             | &Token::REAL_CONST(_)
-            | &Token::STRING_LITERAL(_ ) => Ok(PrefixParselet::Literal),
+            | &Token::STRING_LITERAL(_ )
+            | &Token::BOOLEAN_CONST(_)   => Ok(PrefixParselet::Literal),
             &Token::PLUS
-            | &Token::MINUS              => Ok(PrefixParselet::UnaryOperator(Precedence::UNARY as u32)),
+            | &Token::MINUS              => Ok(PrefixParselet::UnaryOperator(Precedence::UNARY_NUM as u32)),
+            &Token::NOT                  => Ok(PrefixParselet::UnaryOperator(Precedence::UNARY_BOOL as u32)),
             &Token::LPAREN               => Ok(PrefixParselet::Grouping),
             &Token::ID(_)                => Ok(PrefixParselet::Variable),
             _                            => Err(String::from(format!("{:?} is not a prefix token", token)))
@@ -74,6 +78,8 @@ impl<'a> Parser<'a> {
             &Token::MULTIPLY
             | &Token::INTEGER_DIV
             | &Token::FLOAT_DIV   => Ok(InfixParselet::BinaryOperator(Precedence::PRODUCT as u32)),
+            &Token::AND
+            | &Token::OR          => Ok(InfixParselet::BinaryOperator(Precedence::BINARY_BOOL as u32)),
             &Token::LPAREN        => Ok(InfixParselet::FunctionCall(Precedence::CALL as u32)),
             _                     => Err(String::from(format!("{:?} is not an infix token", token)))
         };
@@ -192,6 +198,7 @@ impl<'a> Parser<'a> {
             Some(Token::INTEGER) => Ok(TypeSpec::INTEGER),
             Some(Token::REAL)    => Ok(TypeSpec::REAL),
             Some(Token::STRING)  => Ok(TypeSpec::STRING),
+            Some(Token::BOOLEAN) => Ok(TypeSpec::BOOLEAN),
             _                    => Err(String::from("TypeSpec Parse Error"))
         };
     }
@@ -309,7 +316,7 @@ impl<'a> Parser<'a> {
 
         return match self.lexer.next() {
             Some(Token::END)   => Ok(Compound::StatementList(statement_list)),
-            _                  => Err(String::from("Compound Statement Parse Error"))
+            _                  => Err(String::from("Compound Statement Parse Error!"))
         };
     }
 

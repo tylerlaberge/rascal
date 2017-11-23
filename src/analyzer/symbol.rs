@@ -12,7 +12,8 @@ pub enum Symbol {
 pub enum VarSymbol {
     INTEGER(String),
     REAL(String),
-    STRING(String)
+    STRING(String),
+    BOOLEAN(String)
 }
 
 #[derive(Debug)]
@@ -28,6 +29,7 @@ impl Symbol {
             &Symbol::Var(VarSymbol::INTEGER(ref name))
             | &Symbol::Var(VarSymbol::REAL(ref name))
             | &Symbol::Var(VarSymbol::STRING(ref name))
+            | &Symbol::Var(VarSymbol::BOOLEAN(ref name))
             | &Symbol::Callable(CallableSymbol::Procedure(ref name, _))
             | &Symbol::Callable(CallableSymbol::Function(ref name, _, _)) => name.clone()
         };
@@ -47,7 +49,8 @@ impl Clone for VarSymbol {
         return match self {
             &VarSymbol::INTEGER(ref name) => VarSymbol::INTEGER(name.clone()),
             &VarSymbol::REAL(ref name)    => VarSymbol::REAL(name.clone()),
-            &VarSymbol::STRING(ref name)  => VarSymbol::STRING(name.clone())
+            &VarSymbol::STRING(ref name)  => VarSymbol::STRING(name.clone()),
+            &VarSymbol::BOOLEAN(ref name) => VarSymbol::BOOLEAN(name.clone())
         }
     }
 }

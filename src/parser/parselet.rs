@@ -47,6 +47,7 @@ impl PrefixParselet {
             &Token::INTEGER_CONST(i)      => Ok(Literal::Int(i)),
             &Token::REAL_CONST(i)         => Ok(Literal::Float(i)),
             &Token::STRING_LITERAL(ref s) => Ok(Literal::String(s.clone())),
+            &Token::BOOLEAN_CONST(b)      => Ok(Literal::Boolean(b)),
             _                             => Err(String::from("Literal Parse Error"))
         };
     }
@@ -69,6 +70,7 @@ impl PrefixParselet {
         return match (token, parser.expr(Some(self.get_precedence()))?) {
             (&Token::PLUS, operand)  => Ok(UnaryOpExpr::UnaryOp(UnaryOperator::Plus, operand)),
             (&Token::MINUS, operand) => Ok(UnaryOpExpr::UnaryOp(UnaryOperator::Minus, operand)),
+            (&Token::NOT, operand)   => Ok(UnaryOpExpr::UnaryOp(UnaryOperator::Not, operand)),
             _                        => Err(String::from("Unary Op Parse Error"))
         };
     }
@@ -97,6 +99,8 @@ impl InfixParselet {
             (&Token::MULTIPLY, right)    => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Multiply, right)),
             (&Token::INTEGER_DIV, right) => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::IntegerDivide, right)),
             (&Token::FLOAT_DIV, right)   => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::FloatDivide, right)),
+            (&Token::AND, right)         => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::And, right)),
+            (&Token::OR, right)          => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Or, right)),
             _                            => Err(String::from("Binary Op Parse Error"))
         };
     }
