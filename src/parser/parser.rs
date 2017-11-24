@@ -15,6 +15,7 @@ use super::ast::TypeSpec;
 use super::ast::Compound;
 use super::ast::StatementList;
 use super::ast::Statement;
+use super::ast::IfStatement;
 use super::ast::Assignment;
 use super::ast::Variable;
 use super::ast::FunctionCall;
@@ -33,7 +34,8 @@ use super::ast::Expr;
 ///     type_spec             :: INTEGER | REAL | BOOLEAN
 ///     compound_statement    :: BEGIN statement_list END
 ///     statement_list        :: statement | statement SEMI statement_list
-///     statement             :: compound_statement | assignment_statement | function_call | empty
+///     statement             :: compound_statement | if_statement | assignment_statement | function_call | empty
+///     if_statement          :: IF expr THEN compound_statement (ELSE (if_statement | compound_statement))?
 ///     assignment_statement  :: variable ASSIGN expr
 ///     variable              :: ID
 ///     function_call         :: variable LPAREN (call_parameters)? RPAREN
@@ -352,7 +354,7 @@ impl<'a> Parser<'a> {
     }
 
     /// <pre>
-    ///     statement :: compound_statement | assignment_statement | function_call | empty
+    ///     statement :: compound_statement | if_statement | assignment_statement | function_call | empty
     /// </pre>
     fn statement(&mut self) -> Result<Statement, String> {
         return match self.lexer.peek() {
@@ -361,12 +363,32 @@ impl<'a> Parser<'a> {
                 Some(&Token::LPAREN) => Ok(Statement::FunctionCall(self.function_call()?)),
                 _                    => Ok(Statement::Assignment(self.assignment_statement()?))
             },
+            Some(&Token::IF)    => Ok(Statement::IfStatement(self.if_statement()?)),
             Some(&Token::END)   => {
                 self.lexer.next(); // eat the token
 
                 Ok(Statement::Empty)
             },
             _                   => Err(String::from("Statement Parse Error"))
+        };
+    }
+
+    /// <pre>
+    ///     if_statement :: IF expr THEN compound_statement (ELSE (if_statement | compound_statement))?
+    /// </pre>
+    fn if_statement(&mut self) -> Result<IfStatement, String> {
+        return match (self.lexer.next(), self.expr(None)?, self.lexer.next(), self.compound_statement()?) {
+            (Some(Token::IF), expr, Some(Token::THEN), compound_statement) => match self.lexer.peek() {
+                Some(&Token::ELSE) => {
+                    self.lexer.next();
+                    match self.lexer.peek() {
+                        Some(&Token::IF) => Ok(IfStatement::IfElseIf(expr,compound_statement, Box::new(self.if_statement()?))),
+                        _                => Ok(IfStatement::IfElse(expr,compound_statement, self.compound_statement()?))
+                    }
+                },
+                _                  => Ok(IfStatement::If(expr,compound_statement))
+            },
+            _                                                          => Err(String::from("If statement parse error"))
         };
     }
 

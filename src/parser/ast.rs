@@ -64,6 +64,7 @@ pub enum StatementList {
 pub enum Statement {
     Compound(Compound),
     Assignment(Assignment),
+    IfStatement(IfStatement),
     FunctionCall(FunctionCall),
     Empty
 }
@@ -71,6 +72,13 @@ pub enum Statement {
 #[derive(Debug, Clone)]
 pub enum Assignment {
     Assign(Variable, Expr)
+}
+
+#[derive(Debug, Clone)]
+pub enum IfStatement {
+    If(Expr, Compound),
+    IfElse(Expr, Compound, Compound),
+    IfElseIf(Expr, Compound, Box<IfStatement>)
 }
 
 #[derive(Debug, Clone)]

@@ -8,6 +8,7 @@ use parser::ast::FormalParameters;
 use parser::ast::Compound;
 use parser::ast::StatementList;
 use parser::ast::Statement;
+use parser::ast::IfStatement;
 use parser::ast::FunctionCall;
 use parser::ast::CallParameters;
 use parser::ast::Expr;
@@ -175,9 +176,42 @@ impl Interpreter {
         return match node {
             &Statement::Compound(ref compound)            => self.visit_compound(compound),
             &Statement::Assignment(ref assignment)        => self.visit_assignment(assignment),
+            &Statement::IfStatement(ref if_statement)     => self.visit_if_statement(if_statement),
             &Statement::FunctionCall(ref function_call)   => self.visit_function_call(function_call),
             &Statement::Empty                             => Ok(Object::Unit)
         };
+    }
+
+    fn visit_if_statement(&mut self, node: &IfStatement) -> Result<Object, String> {
+        return match node {
+            &IfStatement::If(ref expr, ref compound_statement) => match self.visit_expr(expr)? {
+                Object::Primitive(Primitive::Boolean(true)) => {
+                    self.visit_compound(compound_statement)?;
+                    Ok(Object::Unit)
+                },
+                Object::Primitive(Primitive::Boolean(false)) => Ok(Object::Unit),
+                _                                            => Err(String::from("Interpreter If Statement Error"))
+            },
+            &IfStatement::IfElse(ref expr, ref if_compound_statement, ref else_compound_statement) => match self.visit_expr(expr)? {
+                Object::Primitive(Primitive::Boolean(true)) => {
+                    self.visit_compound(if_compound_statement)?;
+                    Ok(Object::Unit)
+                },
+                Object::Primitive(Primitive::Boolean(false)) => {
+                    self.visit_compound(else_compound_statement)?;
+                    Ok(Object::Unit)
+                },
+                _                                            => Err(String::from("Interpreter If Statement Error"))
+            },
+            &IfStatement::IfElseIf(ref expr, ref if_compound_statement, ref else_if_statement) => match self.visit_expr(expr)? {
+                Object::Primitive(Primitive::Boolean(true)) => {
+                    self.visit_compound(if_compound_statement)?;
+                    Ok(Object::Unit)
+                },
+                Object::Primitive(Primitive::Boolean(false)) => self.visit_if_statement(else_if_statement),
+                _                                            => Err(String::from("Interpreter If Statement Error"))
+            },
+        }
     }
 
     fn visit_assignment(&mut self, node: &Assignment) -> Result<Object, String> {

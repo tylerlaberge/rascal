@@ -9,6 +9,7 @@ use parser::ast::FunctionDeclaration;
 use parser::ast::Compound;
 use parser::ast::StatementList;
 use parser::ast::Statement;
+use parser::ast::IfStatement;
 use parser::ast::TypeSpec;
 use parser::ast::FunctionCall;
 use parser::ast::CallParameters;
@@ -282,9 +283,44 @@ impl SemanticAnalyzer {
         return match node {
             &Statement::Compound(ref compound)            => self.visit_compound(compound),
             &Statement::Assignment(ref assignment)        => self.visit_assignment(assignment),
+            &Statement::IfStatement(ref if_statement)     => self.visit_if_statement(if_statement),
             &Statement::FunctionCall(ref function_call)   => self.visit_function_call(function_call),
             &Statement::Empty                             => Ok(TypeSpec::UNIT)
         };
+    }
+
+    fn visit_if_statement(&mut self, node: &IfStatement) -> Result<TypeSpec, String> {
+        return match node {
+            &IfStatement::If(ref expr, ref compound_statement) => {
+                match self.visit_expr(expr)? {
+                    TypeSpec::BOOLEAN => Ok(()),
+                    _                 => Err(String::from("If statement must use a boolean expression"))
+                }?;
+
+                self.visit_compound(compound_statement)?;
+                Ok(TypeSpec::UNIT)
+            },
+            &IfStatement::IfElse(ref expr, ref if_compound_statement, ref else_compound_statement) => {
+                match self.visit_expr(expr)? {
+                    TypeSpec::BOOLEAN => Ok(()),
+                    _                 => Err(String::from("If statement must use a boolean expression"))
+                }?;
+
+                self.visit_compound(if_compound_statement)?;
+                self.visit_compound(else_compound_statement)?;
+                Ok(TypeSpec::UNIT)
+            },
+            &IfStatement::IfElseIf(ref expr, ref if_compound_statement, ref else_if_statement) => {
+                match self.visit_expr(expr)? {
+                    TypeSpec::BOOLEAN => Ok(()),
+                    _                 => Err(String::from("If statement must use a boolean expression"))
+                }?;
+
+                self.visit_compound(if_compound_statement)?;
+                self.visit_if_statement(else_if_statement)?;
+                Ok(TypeSpec::UNIT)
+            }
+        }
     }
 
     fn visit_assignment(&mut self, node: &Assignment) -> Result<TypeSpec, String> {

@@ -112,6 +112,9 @@ impl<'a> Lexer<'a> {
             "or"        => Ok(Token::OR),
             "not"       => Ok(Token::NOT),
             "div"       => Ok(Token::INTEGER_DIV),
+            "if"        => Ok(Token::IF),
+            "then"      => Ok(Token::THEN),
+            "else"      => Ok(Token::ELSE),
             id          => Ok(Token::ID(id.to_string()))
         };
     }
