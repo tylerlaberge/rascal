@@ -94,14 +94,21 @@ impl InfixParselet {
 
     fn binary_op(&self, parser: &mut Parser, left: &Expr, token: &Token) -> Result<BinaryOpExpr, String> {
         return match (token, parser.expr(Some(self.get_precedence()))?) {
-            (&Token::PLUS, right)        => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Plus, right)),
-            (&Token::MINUS, right)       => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Minus, right)),
-            (&Token::MULTIPLY, right)    => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Multiply, right)),
-            (&Token::INTEGER_DIV, right) => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::IntegerDivide, right)),
-            (&Token::FLOAT_DIV, right)   => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::FloatDivide, right)),
-            (&Token::AND, right)         => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::And, right)),
-            (&Token::OR, right)          => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Or, right)),
-            _                            => Err(String::from("Binary Op Parse Error"))
+            (&Token::PLUS, right)                  => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Plus, right)),
+            (&Token::MINUS, right)                 => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Minus, right)),
+            (&Token::MULTIPLY, right)              => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Multiply, right)),
+            (&Token::INTEGER_DIV, right)           => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::IntegerDivide, right)),
+            (&Token::FLOAT_DIV, right)             => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::FloatDivide, right)),
+            (&Token::AND, right)                   => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::And, right)),
+            (&Token::OR, right)                    => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Or, right)),
+            (&Token::LESS_THAN, right)             => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::LessThan, right)),
+            (&Token::LESS_THAN_OR_EQUAL, right)    => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::LessThanOrEqual, right)),
+            (&Token::GREATER_THAN, right)          => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::GreaterThan, right)),
+            (&Token::GREATER_THAN_OR_EQUAL, right) => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::GreaterThanOrEqual, right)),
+            (&Token::EQUAL, right)                 => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Equal, right)),
+            (&Token::NOT_EQUAL, right)             => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::NotEqual, right)),
+
+            _                                      => Err(String::from("Binary Op Parse Error"))
         };
     }
 

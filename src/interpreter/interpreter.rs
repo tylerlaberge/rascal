@@ -266,13 +266,20 @@ impl Interpreter {
 
     fn visit_binop(&mut self, node: &BinaryOpExpr) -> Result<Object, String> {
         return match node {
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Plus, ref right)          => Ok(self.visit_expr(left)?.add(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Minus, ref right)         => Ok(self.visit_expr(left)?.subtract(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Multiply, ref right)      => Ok(self.visit_expr(left)?.multiply(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::FloatDivide, ref right)   => Ok(self.visit_expr(left)?.float_divide(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::IntegerDivide, ref right) => Ok(self.visit_expr(left)?.integer_divide(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::And, ref right)           => Ok(self.visit_expr(left)?.and(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Or, ref right)            => Ok(self.visit_expr(left)?.or(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Plus, ref right)               => Ok(self.visit_expr(left)?.add(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Minus, ref right)              => Ok(self.visit_expr(left)?.subtract(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Multiply, ref right)           => Ok(self.visit_expr(left)?.multiply(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::FloatDivide, ref right)        => Ok(self.visit_expr(left)?.float_divide(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::IntegerDivide, ref right)      => Ok(self.visit_expr(left)?.integer_divide(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::And, ref right)                => Ok(self.visit_expr(left)?.and(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Or, ref right)                 => Ok(self.visit_expr(left)?.or(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::LessThan, ref right)           => Ok(self.visit_expr(left)?.less_than(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::LessThanOrEqual, ref right)    => Ok(self.visit_expr(left)?.less_than_or_equal(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::GreaterThan, ref right)        => Ok(self.visit_expr(left)?.greater_than(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::GreaterThanOrEqual, ref right) => Ok(self.visit_expr(left)?.greater_than_or_equal(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Equal, ref right)              => Ok(self.visit_expr(left)?.equal(&self.visit_expr(right)?)?),
+            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::NotEqual, ref right)           => Ok(self.visit_expr(left)?.not_equal(&self.visit_expr(right)?)?),
+
         };
     }
 

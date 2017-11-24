@@ -384,18 +384,32 @@ impl SemanticAnalyzer {
         return match expr {
             &BinaryOpExpr::BinaryOp(ref left, ref operator, ref right) =>
                 match (self.visit_expr(left)?, operator, self.visit_expr(right)?) {
-                    (TypeSpec::INTEGER, &BinaryOperator::Plus, TypeSpec::INTEGER)          => Ok(TypeSpec::INTEGER),
-                    (TypeSpec::INTEGER, &BinaryOperator::Minus, TypeSpec::INTEGER)         => Ok(TypeSpec::INTEGER),
-                    (TypeSpec::INTEGER, &BinaryOperator::Multiply, TypeSpec::INTEGER)      => Ok(TypeSpec::INTEGER),
-                    (TypeSpec::INTEGER, &BinaryOperator::IntegerDivide, TypeSpec::INTEGER) => Ok(TypeSpec::INTEGER),
-                    (TypeSpec::REAL, &BinaryOperator::Plus, TypeSpec::REAL)                => Ok(TypeSpec::REAL),
-                    (TypeSpec::REAL, &BinaryOperator::Minus, TypeSpec::REAL)               => Ok(TypeSpec::REAL),
-                    (TypeSpec::REAL, &BinaryOperator::Multiply, TypeSpec::REAL)            => Ok(TypeSpec::REAL),
-                    (TypeSpec::REAL, &BinaryOperator::FloatDivide, TypeSpec::REAL)         => Ok(TypeSpec::REAL),
-                    (TypeSpec::STRING, &BinaryOperator::Plus, TypeSpec::STRING)            => Ok(TypeSpec::STRING),
-                    (TypeSpec::BOOLEAN, &BinaryOperator::And, TypeSpec::BOOLEAN)           => Ok(TypeSpec::BOOLEAN),
-                    (TypeSpec::BOOLEAN, &BinaryOperator::Or, TypeSpec::BOOLEAN)            => Ok(TypeSpec::BOOLEAN),
-                    _                                                                      => Err(String::from("Mismatching types"))
+                    (TypeSpec::INTEGER, &BinaryOperator::Plus, TypeSpec::INTEGER)               => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::INTEGER, &BinaryOperator::Minus, TypeSpec::INTEGER)              => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::INTEGER, &BinaryOperator::Multiply, TypeSpec::INTEGER)           => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::INTEGER, &BinaryOperator::IntegerDivide, TypeSpec::INTEGER)      => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::INTEGER, &BinaryOperator::LessThan, TypeSpec::INTEGER)           => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::INTEGER, &BinaryOperator::LessThanOrEqual, TypeSpec::INTEGER)    => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::INTEGER, &BinaryOperator::GreaterThan, TypeSpec::INTEGER)        => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::INTEGER, &BinaryOperator::GreaterThanOrEqual, TypeSpec::INTEGER) => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::INTEGER, &BinaryOperator::Equal, TypeSpec::INTEGER)              => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::INTEGER, &BinaryOperator::NotEqual, TypeSpec::INTEGER)           => Ok(TypeSpec::BOOLEAN),
+
+                    (TypeSpec::REAL, &BinaryOperator::Plus, TypeSpec::REAL)                     => Ok(TypeSpec::REAL),
+                    (TypeSpec::REAL, &BinaryOperator::Minus, TypeSpec::REAL)                    => Ok(TypeSpec::REAL),
+                    (TypeSpec::REAL, &BinaryOperator::Multiply, TypeSpec::REAL)                 => Ok(TypeSpec::REAL),
+                    (TypeSpec::REAL, &BinaryOperator::FloatDivide, TypeSpec::REAL)              => Ok(TypeSpec::REAL),
+                    (TypeSpec::REAL, &BinaryOperator::LessThan, TypeSpec::REAL)                 => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::REAL, &BinaryOperator::LessThanOrEqual, TypeSpec::REAL)          => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::REAL, &BinaryOperator::GreaterThan, TypeSpec::REAL)              => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::REAL, &BinaryOperator::GreaterThanOrEqual, TypeSpec::REAL)       => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::REAL, &BinaryOperator::Equal, TypeSpec::REAL)                    => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::REAL, &BinaryOperator::NotEqual, TypeSpec::REAL)                 => Ok(TypeSpec::BOOLEAN),
+
+                    (TypeSpec::STRING, &BinaryOperator::Plus, TypeSpec::STRING)                 => Ok(TypeSpec::STRING),
+                    (TypeSpec::BOOLEAN, &BinaryOperator::And, TypeSpec::BOOLEAN)                => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::BOOLEAN, &BinaryOperator::Or, TypeSpec::BOOLEAN)                 => Ok(TypeSpec::BOOLEAN),
+                    _                                                                           => Err(String::from("Mismatching types"))
                 }
         };
     }

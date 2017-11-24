@@ -145,6 +145,31 @@ impl<'a> Lexer<'a> {
         };
     }
 
+    fn comparison(&mut self) -> Result<Token, String> {
+        return match self.source.current_char() {
+            Some('<') => match self.source.peek() {
+                Some(&'=') => {
+                    self.source.next();
+                    Ok(Token::LESS_THAN_OR_EQUAL)
+                },
+                Some(&'>') => {
+                    self.source.next();
+                    Ok(Token::NOT_EQUAL)
+                },
+                _          => Ok(Token::LESS_THAN)
+            },
+            Some('>') => match self.source.peek() {
+                Some(&'=') => {
+                    self.source.next();
+                    Ok(Token::GREATER_THAN_OR_EQUAL)
+                },
+                _          => Ok(Token::GREATER_THAN)
+            },
+            Some('=') => Ok(Token::EQUAL),
+            _         => Err(String::from("Internal Lexer Error"))
+        };
+    }
+
     fn lex(&mut self) -> Result<Token, String> {
         return match self.source.next() {
             Some(character) if character.is_whitespace() => self.lex(),
@@ -155,6 +180,9 @@ impl<'a> Lexer<'a> {
                 _          => Ok(Token::COLON)
             },
             Some('\'')                                   => self.string(),
+            Some('<')                                    => self.comparison(),
+            Some('>')                                    => self.comparison(),
+            Some('=')                                    => self.comparison(),
             Some(',')                                    => Ok(Token::COMMA),
             Some('.')                                    => Ok(Token::DOT),
             Some(';')                                    => Ok(Token::SEMI),

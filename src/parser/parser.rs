@@ -40,9 +40,11 @@ use super::ast::Expr;
 ///     call_parameters       :: expr | expr COMMA call_parameters
 ///     expr                  :: unaryop_expr | binop_expr | grouped_expr | function_call | literal | variable
 ///     unaryop_expr          :: unaryop expr
-///     unaryop               :: PLUS | MINUS | not
+///     unaryop               :: PLUS | MINUS | NOT
 ///     binop_expr            :: binop expr
-///     binop                 :: PLUS | MINUS | MUL | INTEGER_DIV | FLOAT_DIV | and | or
+///     binop                 :: PLUS | MINUS | MUL | INTEGER_DIV | FLOAT_DIV | AND | OR |
+///                              LESS_THAN | LESS_THAN_OR_EQUAL | GREATER_THAN |
+///                              GREATER_THAN_OR_EQUAL | EQUAL | NOT_EQUAL
 ///     grouped_expr          :: LPAREN expr RPAREN
 ///     literal               :: INTEGER_CONST | REAL_CONST | BOOLEAN_CONST | STRING_LITERAL
 /// </pre>
@@ -74,14 +76,20 @@ impl<'a> Parser<'a> {
     fn get_infix_parselet(token: &Token) -> Result<InfixParselet, String> {
         return match token {
             &Token::PLUS
-            | &Token::MINUS       => Ok(InfixParselet::BinaryOperator(Precedence::SUM as u32)),
+            | &Token::MINUS                 => Ok(InfixParselet::BinaryOperator(Precedence::SUM as u32)),
             &Token::MULTIPLY
             | &Token::INTEGER_DIV
-            | &Token::FLOAT_DIV   => Ok(InfixParselet::BinaryOperator(Precedence::PRODUCT as u32)),
+            | &Token::FLOAT_DIV             => Ok(InfixParselet::BinaryOperator(Precedence::PRODUCT as u32)),
             &Token::AND
-            | &Token::OR          => Ok(InfixParselet::BinaryOperator(Precedence::BINARY_BOOL as u32)),
-            &Token::LPAREN        => Ok(InfixParselet::FunctionCall(Precedence::CALL as u32)),
-            _                     => Err(String::from(format!("{:?} is not an infix token", token)))
+            | &Token::OR                    => Ok(InfixParselet::BinaryOperator(Precedence::BINARY_BOOL as u32)),
+            &Token::LESS_THAN
+            | &Token::LESS_THAN_OR_EQUAL
+            | &Token::GREATER_THAN
+            | &Token::GREATER_THAN_OR_EQUAL
+            | &Token::EQUAL
+            | &Token::NOT_EQUAL             => Ok(InfixParselet::BinaryOperator(Precedence::COMPARISON as u32)),
+            &Token::LPAREN                  => Ok(InfixParselet::FunctionCall(Precedence::CALL as u32)),
+            _                               => Err(String::from(format!("{:?} is not an infix token", token)))
         };
     }
 

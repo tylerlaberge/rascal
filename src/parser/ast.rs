@@ -123,7 +123,13 @@ pub enum BinaryOperator {
     IntegerDivide,
     FloatDivide,
     And,
-    Or
+    Or,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+    Equal,
+    NotEqual
 }
 
 #[derive(Debug, Clone)]

@@ -119,6 +119,67 @@ impl Object {
             _                                         => Err(String::from("Interpreter Negation Error"))
         };
     }
+
+    pub fn less_than(&self, other: &Self) -> Result<Self, String> {
+        return match (self, other) {
+            (&Object::Primitive(Primitive::Integer(left)), &Object::Primitive(Primitive::Integer(right)))
+                => Ok(Object::Primitive(Primitive::Boolean(left < right))),
+            (&Object::Primitive(Primitive::Float(left)), &Object::Primitive(Primitive::Float(right)))
+                => Ok(Object::Primitive(Primitive::Boolean(left < right))),
+            _   => Err(String::from("Interpreter Less Than Error"))
+        };
+    }
+
+    pub fn less_than_or_equal(&self, other: &Self) -> Result<Self, String> {
+        return match (self, other) {
+            (&Object::Primitive(Primitive::Integer(left)), &Object::Primitive(Primitive::Integer(right)))
+            => Ok(Object::Primitive(Primitive::Boolean(left <= right))),
+            (&Object::Primitive(Primitive::Float(left)), &Object::Primitive(Primitive::Float(right)))
+            => Ok(Object::Primitive(Primitive::Boolean(left <= right))),
+            _   => Err(String::from("Interpreter Less Than Or Equal Error"))
+        };
+    }
+
+    pub fn greater_than(&self, other: &Self) -> Result<Self, String> {
+        return match (self, other) {
+            (&Object::Primitive(Primitive::Integer(left)), &Object::Primitive(Primitive::Integer(right)))
+            => Ok(Object::Primitive(Primitive::Boolean(left > right))),
+            (&Object::Primitive(Primitive::Float(left)), &Object::Primitive(Primitive::Float(right)))
+            => Ok(Object::Primitive(Primitive::Boolean(left > right))),
+            _   => Err(String::from("Interpreter Greater Than Error"))
+        };
+    }
+
+    pub fn greater_than_or_equal(&self, other: &Self) -> Result<Self, String> {
+        return match (self, other) {
+            (&Object::Primitive(Primitive::Integer(left)), &Object::Primitive(Primitive::Integer(right)))
+            => Ok(Object::Primitive(Primitive::Boolean(left >= right))),
+            (&Object::Primitive(Primitive::Float(left)), &Object::Primitive(Primitive::Float(right)))
+            => Ok(Object::Primitive(Primitive::Boolean(left >= right))),
+            _   => Err(String::from("Interpreter Greater Than Or Equal Error"))
+        };
+    }
+
+    pub fn equal(&self, other: &Self) -> Result<Self, String> {
+        return match (self, other) {
+            (&Object::Primitive(Primitive::Integer(left)), &Object::Primitive(Primitive::Integer(right)))
+            => Ok(Object::Primitive(Primitive::Boolean(left == right))),
+            (&Object::Primitive(Primitive::Float(left)), &Object::Primitive(Primitive::Float(right)))
+            => Ok(Object::Primitive(Primitive::Boolean(left == right))),
+            _   => Err(String::from("Interpreter Equal Error"))
+        };
+    }
+
+    pub fn not_equal(&self, other: &Self) -> Result<Self, String> {
+        return match (self, other) {
+            (&Object::Primitive(Primitive::Integer(left)), &Object::Primitive(Primitive::Integer(right)))
+            => Ok(Object::Primitive(Primitive::Boolean(left != right))),
+            (&Object::Primitive(Primitive::Float(left)), &Object::Primitive(Primitive::Float(right)))
+            => Ok(Object::Primitive(Primitive::Boolean(left != right))),
+            _   => Err(String::from("Interpreter Not Equal Error"))
+        };
+    }
+
 }
 
 impl Debug for Object {
