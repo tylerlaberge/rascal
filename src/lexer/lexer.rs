@@ -95,17 +95,17 @@ impl<'a> Lexer<'a> {
                 return acc;
             });
 
-        return match final_id.as_str() {
-            "PROGRAM"   => Ok(Token::PROGRAM),
-            "PROCEDURE" => Ok(Token::PROCEDURE),
-            "FUNCTION"  => Ok(Token::FUNCTION),
-            "BEGIN"     => Ok(Token::BEGIN),
-            "END"       => Ok(Token::END),
-            "VAR"       => Ok(Token::VAR),
-            "INTEGER"   => Ok(Token::INTEGER),
-            "REAL"      => Ok(Token::REAL),
-            "STRING"    => Ok(Token::STRING),
-            "BOOLEAN"   => Ok(Token::BOOLEAN),
+        return match final_id.to_lowercase().as_str() {
+            "program"   => Ok(Token::PROGRAM),
+            "procedure" => Ok(Token::PROCEDURE),
+            "function"  => Ok(Token::FUNCTION),
+            "begin"     => Ok(Token::BEGIN),
+            "end"       => Ok(Token::END),
+            "var"       => Ok(Token::VAR),
+            "integer"   => Ok(Token::INTEGER),
+            "real"      => Ok(Token::REAL),
+            "string"    => Ok(Token::STRING),
+            "boolean"   => Ok(Token::BOOLEAN),
             "true"      => Ok(Token::BOOLEAN_CONST(true)),
             "false"     => Ok(Token::BOOLEAN_CONST(false)),
             "and"       => Ok(Token::AND),
@@ -115,7 +115,7 @@ impl<'a> Lexer<'a> {
             "if"        => Ok(Token::IF),
             "then"      => Ok(Token::THEN),
             "else"      => Ok(Token::ELSE),
-            id          => Ok(Token::ID(id.to_string()))
+            _           => Ok(Token::ID(final_id))
         };
     }
 
