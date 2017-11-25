@@ -89,7 +89,7 @@ impl<'a> Lexer<'a> {
             _                            => Err("Internal Lexer Error")
         }?.to_string();
         let final_id: String = self.source.by_ref()
-            .peeking_take_while(| c: &char | c.is_alphanumeric())
+            .peeking_take_while(| c: &char | c.is_alphanumeric() || c == &'_')
             .fold(start_id, | mut acc: String, next_id: char | {
                 acc.push(next_id);
                 return acc;
