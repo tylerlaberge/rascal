@@ -13,7 +13,6 @@ use super::ast::FormalParameters;
 use super::ast::VariableDeclaration;
 use super::ast::TypeSpec;
 use super::ast::Compound;
-use super::ast::StatementList;
 use super::ast::Statement;
 use super::ast::IfStatement;
 use super::ast::Assignment;
@@ -26,19 +25,18 @@ use super::ast::Expr;
 ///     program               :: PROGRAM variable SEMI block DOT
 ///     block                 :: declarations compound_statement
 ///     declarations          :: VAR (variable_declaration)+ (procedure_declaration | function_declaration)* | (procedure_declaration | function_declaration)* | empty
-///     procedure_declaration :: PROCEDURE ID (LPAREN formal_parameter_list RPAREN)? SEMI block SEMI
-///     function_declaration  :: FUNCTION ID LPAREN formal_parameter_list RPAREN COLON type_spec SEMI block SEMI
+///     procedure_declaration :: PROCEDURE ID (LPAREN formal_parameter_list RPAREN)? SEMI block
+///     function_declaration  :: FUNCTION ID LPAREN formal_parameter_list RPAREN COLON type_spec SEMI block
 ///     formal_parameter_list :: formal_parameters | formal_parameters SEMI formal_parameter_list | empty
 ///     formal_parameters     :: ID (COMMA ID)* COLON type_spec
 ///     variable_declaration  :: ID (COMMA ID)* COLON type_spec SEMI
 ///     type_spec             :: INTEGER | REAL | BOOLEAN
-///     compound_statement    :: BEGIN statement_list END
-///     statement_list        :: statement | statement SEMI statement_list
-///     statement             :: compound_statement | if_statement | assignment_statement | function_call | empty
+///     compound_statement    :: BEGIN (statement)* END
+///     statement             :: compound_statement | if_statement | assignment_statement | function_call
 ///     if_statement          :: IF expr THEN compound_statement (ELSE (if_statement | compound_statement))?
-///     assignment_statement  :: variable ASSIGN expr
+///     assignment_statement  :: variable ASSIGN expr SEMI
 ///     variable              :: ID
-///     function_call         :: variable LPAREN (call_parameters)? RPAREN
+///     function_call         :: variable LPAREN (call_parameters)? RPAREN SEMI
 ///     call_parameters       :: expr | expr COMMA call_parameters
 ///     expr                  :: unaryop_expr | binop_expr | grouped_expr | function_call | literal | variable
 ///     unaryop_expr          :: unaryop expr
@@ -214,7 +212,7 @@ impl<'a> Parser<'a> {
     }
 
     /// <pre>
-    ///     procedure_declaration :: PROCEDURE ID (LPAREN formal_parameter_list RPAREN)? SEMI block SEMI
+    ///     procedure_declaration :: PROCEDURE ID (LPAREN formal_parameter_list RPAREN)? SEMI block
     /// </pre>
     fn procedure_declaration(&mut self) -> Result<ProcedureDeclaration, String> {
         let name = match (self.lexer.next(), self.lexer.next()) {
@@ -229,16 +227,16 @@ impl<'a> Parser<'a> {
             },
             _                   => Ok(FormalParameterList::FormalParameters(vec![]))
         }?;
-        let block = match (self.lexer.next(), self.block()?, self.lexer.next()) {
-            (Some(Token::SEMI), block, Some(Token::SEMI)) => Ok(block),
-            _                                             => Err(String::from("Procedure Declaration Parse Error"))
+        let block = match (self.lexer.next(), self.block()?) {
+            (Some(Token::SEMI), block) => Ok(block),
+            _                          => Err(String::from("Procedure Declaration Parse Error"))
         }?;
 
         return Ok(ProcedureDeclaration::Procedure(name, parameters, block));
     }
 
     /// <pre>
-    ///     function_declaration :: FUNCTION ID LPAREN formal_parameter_list RPAREN COLON type_spec SEMI block SEMI
+    ///     function_declaration :: FUNCTION ID LPAREN formal_parameter_list RPAREN COLON type_spec SEMI block
     /// </pre>
     fn function_declaration(&mut self) -> Result<FunctionDeclaration, String> {
         let name = match (self.lexer.next(), self.lexer.next()) {
@@ -253,9 +251,9 @@ impl<'a> Parser<'a> {
             (Some(Token::COLON), type_spec) => Ok(type_spec),
             _                               => Err(String::from("Function Declaration Parse Error"))
         }?;
-        let block = match (self.lexer.next(), self.block()?, self.lexer.next()) {
-            (Some(Token::SEMI), block, Some(Token::SEMI)) => Ok(block),
-            _                                             => Err(String::from("Function Declaration Parse Error"))
+        let block = match (self.lexer.next(), self.block()?) {
+            (Some(Token::SEMI), block) => Ok(block),
+            _                          => Err(String::from("Function Declaration Parse Error"))
         }?;
 
         return Ok(FunctionDeclaration::Function(name, parameters, block, return_type));
@@ -314,7 +312,7 @@ impl<'a> Parser<'a> {
     }
 
     /// <pre>
-    ///     compound_statement :: BEGIN statement_list END
+    ///     compound_statement :: BEGIN (statement)* END
     /// </pre>
     fn compound_statement(&mut self) -> Result<Compound, String> {
         match self.lexer.next() {
@@ -322,39 +320,17 @@ impl<'a> Parser<'a> {
             _                  => Err("Compound Statement Parse Error")
         }?;
 
-        let statement_list = self.statement_list()?;
-
-        return match self.lexer.next() {
-            Some(Token::END)   => Ok(Compound::StatementList(statement_list)),
-            _                  => Err(String::from("Compound Statement Parse Error!"))
-        };
-    }
-
-    /// <pre>
-    ///     statement_list :: statement | statement SEMI statement_list
-    /// </pre>
-    fn statement_list(&mut self) -> Result<StatementList, String> {
         let mut statements: Vec<Statement> = vec![];
-        loop {
+        while !matches!(self.lexer.peek(), Some(&Token::END)) {
             statements.push(self.statement()?);
-
-            match self.lexer.peek() {
-                Some(&Token::SEMI) => {
-                    self.lexer.next(); // eat the semicolon
-
-                    if let Some(&Token::END) = self.lexer.peek() {
-                        break;
-                    }
-                },
-                _                  => break
-            };
         }
+        self.lexer.next(); // eat the 'END' token
 
-        return Ok(StatementList::Statements(statements));
+        return Ok(Compound::Statements(statements));
     }
 
     /// <pre>
-    ///     statement :: compound_statement | if_statement | assignment_statement | function_call | empty
+    ///     statement :: compound_statement | if_statement | assignment_statement | function_call
     /// </pre>
     fn statement(&mut self) -> Result<Statement, String> {
         return match self.lexer.peek() {
@@ -364,11 +340,6 @@ impl<'a> Parser<'a> {
                 _                    => Ok(Statement::Assignment(self.assignment_statement()?))
             },
             Some(&Token::IF)    => Ok(Statement::IfStatement(self.if_statement()?)),
-            Some(&Token::END)   => {
-                self.lexer.next(); // eat the token
-
-                Ok(Statement::Empty)
-            },
             _                   => Err(String::from("Statement Parse Error"))
         };
     }
@@ -393,12 +364,12 @@ impl<'a> Parser<'a> {
     }
 
     /// <pre>
-    ///     assignment_statement :: variable ASSIGN expr
+    ///     assignment_statement  :: variable ASSIGN expr SEMI
     /// </pre>
     fn assignment_statement(&mut self) -> Result<Assignment, String> {
-        return match (self.variable()?, self.lexer.next(), self.expr(None)?) {
-            (var, Some(Token::ASSIGN), expr) => Ok(Assignment::Assign(var, expr)),
-            _                                => Err(String::from("Assignment Parse Error"))
+        return match (self.variable()?, self.lexer.next(), self.expr(None)?, self.lexer.next()) {
+            (var, Some(Token::ASSIGN), expr, Some(Token::SEMI)) => Ok(Assignment::Assign(var, expr)),
+            _                                                   => Err(String::from("Assignment Parse Error"))
         }
     }
 
@@ -413,7 +384,7 @@ impl<'a> Parser<'a> {
     }
 
     /// <pre>
-    ///     function_call :: variable LPAREN (call_parameters)? RPAREN
+    ///     function_call :: variable LPAREN (call_parameters)? RPAREN SEMI
     /// </pre>
     fn function_call(&mut self) -> Result<FunctionCall, String> {
         let function_id = self.variable()?;
@@ -429,9 +400,9 @@ impl<'a> Parser<'a> {
             self.call_parameters()?
         };
 
-        match self.lexer.next() {
-            Some(Token::RPAREN) => Ok(()),
-            _                   => Err(String::from("Function Call Parse Error"))
+        match (self.lexer.next(), self.lexer.next()) {
+            (Some(Token::RPAREN), Some(Token::SEMI)) => Ok(()),
+            _                                        => Err(String::from("Function Call Parse Error"))
         }?;
 
         return Ok(FunctionCall::Call(function_id, function_params));

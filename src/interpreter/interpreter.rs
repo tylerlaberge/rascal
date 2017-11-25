@@ -6,7 +6,6 @@ use parser::ast::FunctionDeclaration;
 use parser::ast::FormalParameterList;
 use parser::ast::FormalParameters;
 use parser::ast::Compound;
-use parser::ast::StatementList;
 use parser::ast::Statement;
 use parser::ast::IfStatement;
 use parser::ast::FunctionCall;
@@ -155,13 +154,7 @@ impl Interpreter {
 
     fn visit_compound(&mut self, node: &Compound) -> Result<Object, String> {
         return match node {
-            &Compound::StatementList(ref statement_list) => self.visit_statement_list(statement_list)
-        };
-    }
-
-    fn visit_statement_list(&mut self, node: &StatementList) -> Result<Object, String> {
-        return match node {
-            &StatementList::Statements(ref statements) => {
+            &Compound::Statements(ref statements) => {
                 let mut result = Object::Unit;
                 for statement in statements {
                     result = self.visit_statement(statement)?;
@@ -178,7 +171,6 @@ impl Interpreter {
             &Statement::Assignment(ref assignment)        => self.visit_assignment(assignment),
             &Statement::IfStatement(ref if_statement)     => self.visit_if_statement(if_statement),
             &Statement::FunctionCall(ref function_call)   => self.visit_function_call(function_call),
-            &Statement::Empty                             => Ok(Object::Unit)
         };
     }
 

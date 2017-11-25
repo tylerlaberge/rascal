@@ -7,7 +7,6 @@ use parser::ast::FormalParameters;
 use parser::ast::VariableDeclaration;
 use parser::ast::FunctionDeclaration;
 use parser::ast::Compound;
-use parser::ast::StatementList;
 use parser::ast::Statement;
 use parser::ast::IfStatement;
 use parser::ast::TypeSpec;
@@ -262,13 +261,7 @@ impl SemanticAnalyzer {
 
     fn visit_compound(&mut self, node: &Compound) -> Result<TypeSpec, String> {
         return match node {
-            &Compound::StatementList(ref statement_list) => self.visit_statement_list(statement_list)
-        };
-    }
-
-    fn visit_statement_list(&mut self, node: &StatementList) -> Result<TypeSpec, String> {
-        return match node {
-            &StatementList::Statements(ref statements) => {
+            &Compound::Statements(ref statements) => {
                 let mut last_type = TypeSpec::UNIT;
                 for statement in statements {
                     last_type = self.visit_statement(statement)?;
@@ -285,7 +278,6 @@ impl SemanticAnalyzer {
             &Statement::Assignment(ref assignment)        => self.visit_assignment(assignment),
             &Statement::IfStatement(ref if_statement)     => self.visit_if_statement(if_statement),
             &Statement::FunctionCall(ref function_call)   => self.visit_function_call(function_call),
-            &Statement::Empty                             => Ok(TypeSpec::UNIT)
         };
     }
 

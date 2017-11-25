@@ -52,11 +52,6 @@ pub enum TypeSpec {
 
 #[derive(Debug, Clone)]
 pub enum Compound {
-    StatementList(StatementList)
-}
-
-#[derive(Debug, Clone)]
-pub enum StatementList {
     Statements(Vec<Statement>)
 }
 
@@ -66,7 +61,6 @@ pub enum Statement {
     Assignment(Assignment),
     IfStatement(IfStatement),
     FunctionCall(FunctionCall),
-    Empty
 }
 
 #[derive(Debug, Clone)]
