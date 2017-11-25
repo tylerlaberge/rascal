@@ -58,6 +58,8 @@ impl SemanticAnalyzer {
 
     fn init_built_ins(&mut self) -> Result<(), String> {
         self.scope()?.define(built_ins::writeln_procedure());
+        self.scope()?.define(built_ins::int_to_string_function());
+        self.scope()?.define(built_ins::real_to_string_function());
 
         return Ok(());
     }

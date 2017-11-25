@@ -57,6 +57,8 @@ impl Interpreter {
 
     fn init_built_ins(&mut self) -> Result<(), String> {
         self.scope()?.set(String::from("writeln"), Object::BuiltInFunction(BuiltInFunction::WriteLn(built_ins::writeln)));
+        self.scope()?.set(String::from("IntToString"), Object::BuiltInFunction(BuiltInFunction::IntToString(built_ins::int_to_string)));
+        self.scope()?.set(String::from("RealToString"), Object::BuiltInFunction(BuiltInFunction::RealToString(built_ins::real_to_string)));
 
         return Ok(());
     }
@@ -254,18 +256,42 @@ impl Interpreter {
 
                         Ok(Object::Unit)
                     },
-                    Object::BuiltInFunction(BuiltInFunction::WriteLn(func)) => {
-                        if given_parameters.len() != 1 {
-                            Err(String::from("Built in function writeln expected 1 parameter"))
-                        } else {
-                            let parameter = self.visit_expr(&given_parameters[0])?;
-                            match parameter {
-                                Object::Primitive(Primitive::String(text)) => Ok(func(text)),
-                                _                                          => Err(String::from("Built in function writeln expected String parameter"))
+                    Object::BuiltInFunction(built_in_function) => match built_in_function {
+                        BuiltInFunction::WriteLn(func) => {
+                            if given_parameters.len() != 1 {
+                                Err(String::from("Built in function writeln expected 1 parameter"))
+                            } else {
+                                let parameter = self.visit_expr(&given_parameters[0])?;
+                                match parameter {
+                                    Object::Primitive(Primitive::String(text)) => Ok(func(text)),
+                                    _                                          => Err(String::from("Built in function writeln expected String parameter"))
+                                }
+                            }
+                        },
+                        BuiltInFunction::IntToString(func) => {
+                            if given_parameters.len() != 1 {
+                                Err(String::from("Built in function IntToString expected 1 parameter"))
+                            } else {
+                                let parameter = self.visit_expr(&given_parameters[0])?;
+                                match parameter {
+                                    Object::Primitive(Primitive::Integer(value)) => Ok(func(value)),
+                                    _                                            => Err(String::from("Built in function IntToString expected Integer parameter"))
+                                }
+                            }
+                        },
+                        BuiltInFunction::RealToString(func) => {
+                            if given_parameters.len() != 1 {
+                                Err(String::from("Built in function RealToString expected 1 parameter"))
+                            } else {
+                                let parameter = self.visit_expr(&given_parameters[0])?;
+                                match parameter {
+                                    Object::Primitive(Primitive::Float(value)) => Ok(func(value)),
+                                    _                                          => Err(String::from("Built in function RealToString expected Real parameter"))
+                                }
                             }
                         }
                     },
-                    _                                                       => Err(String::from("Procedure Call Interpreter Error"))
+                    _                                          => Err(String::from("Function Call Interpreter Error"))
                 }
             }
         };
