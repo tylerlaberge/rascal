@@ -48,11 +48,7 @@ impl Interpreter {
     }
 
     pub fn interpret(&mut self, program: &Program) {
-        println!("\n======================================== Interpreting ========================================\n");
-        match self.visit_program(program) {
-            Ok(()) => println!("{}", self),
-            Err(e) => panic!("{}", e)
-        };
+        self.visit_program(program).expect("Rascal Interpreter Error");
     }
 
     fn init_built_ins(&mut self) -> Result<(), String> {
@@ -415,7 +411,6 @@ impl Interpreter {
 
     fn leave_scope(&mut self) {
         let current_scope = self.scope.take();
-        println!("{:?}", current_scope);
 
         match current_scope {
             Some(scope) => self.scope = scope.enclosing_scope(),

@@ -13,7 +13,6 @@ fn main() {
         Ok(source) => source,
         Err(e)     => panic!(e)
     };
-    println!("{}", source);
 
     rascal::interpret(source);
 }

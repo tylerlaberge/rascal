@@ -49,7 +49,6 @@ impl SemanticAnalyzer {
     }
 
     pub fn analyze(&mut self, program: &Program) {
-        println!("\n======================================== Analyzing ========================================\n");
         match self.visit_program(program) {
             Ok(()) => (),
             Err(e) => panic!("{}", e)
@@ -490,7 +489,6 @@ impl SemanticAnalyzer {
 
     fn leave_scope(&mut self) {
         let current_scope = self.scope.take();
-        println!("{:?}", current_scope);
 
         match current_scope {
             Some(scope) => self.scope = scope.enclosing_scope(),
