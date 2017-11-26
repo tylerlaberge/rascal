@@ -15,9 +15,10 @@ pub enum Object {
 
 #[derive(Clone)]
 pub enum BuiltInFunction {
-    WriteLn(fn(String) -> Object),
-    IntToString(fn(i32) -> Object),
-    RealToString(fn(f32) -> Object)
+    WriteLn(fn(String) -> Result<Object, String>),
+    ReadLn(fn() -> Result<Object, String>),
+    IntToString(fn(i32) -> Result<Object, String>),
+    RealToString(fn(f32) -> Result<Object, String>)
 }
 
 #[derive(Debug, Clone)]
@@ -192,6 +193,7 @@ impl Debug for Object {
             &Object::Procedure(ref name, ref variables, _)                 => write!(f, "Procedure<{}, {:?}>", name, variables),
             &Object::Function(ref name, ref variables, _, ref return_type) => write!(f, "Function<{}, {:?} -> {:?}>", name, variables, return_type),
             &Object::BuiltInFunction(BuiltInFunction::WriteLn(_))          => write!(f, "BuiltInFunction<WriteLn, (String) -> ()>"),
+            &Object::BuiltInFunction(BuiltInFunction::ReadLn(_))           => write!(f, "BuiltInFunction<ReadLn, () -> String>"),
             &Object::BuiltInFunction(BuiltInFunction::IntToString(_))      => write!(f, "BuiltInFunction<IntToString, (Integer) -> String>"),
             &Object::BuiltInFunction(BuiltInFunction::RealToString(_))     => write!(f, "BuiltInFunction<RealToString, (Real) -> String>")
         };

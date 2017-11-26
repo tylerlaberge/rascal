@@ -57,6 +57,7 @@ impl Interpreter {
 
     fn init_built_ins(&mut self) -> Result<(), String> {
         self.scope()?.set(String::from("writeln"), Object::BuiltInFunction(BuiltInFunction::WriteLn(built_ins::writeln)));
+        self.scope()?.set(String::from("readln"), Object::BuiltInFunction(BuiltInFunction::ReadLn(built_ins::readln)));
         self.scope()?.set(String::from("IntToString"), Object::BuiltInFunction(BuiltInFunction::IntToString(built_ins::int_to_string)));
         self.scope()?.set(String::from("RealToString"), Object::BuiltInFunction(BuiltInFunction::RealToString(built_ins::real_to_string)));
 
@@ -263,9 +264,16 @@ impl Interpreter {
                             } else {
                                 let parameter = self.visit_expr(&given_parameters[0])?;
                                 match parameter {
-                                    Object::Primitive(Primitive::String(text)) => Ok(func(text)),
+                                    Object::Primitive(Primitive::String(text)) => Ok(func(text)?),
                                     _                                          => Err(String::from("Built in function writeln expected String parameter"))
                                 }
+                            }
+                        },
+                        BuiltInFunction::ReadLn(func) => {
+                            if given_parameters.len() != 0 {
+                                Err(String::from("Built in function readln expected 0 parameters"))
+                            } else {
+                                Ok(func()?)
                             }
                         },
                         BuiltInFunction::IntToString(func) => {
@@ -274,7 +282,7 @@ impl Interpreter {
                             } else {
                                 let parameter = self.visit_expr(&given_parameters[0])?;
                                 match parameter {
-                                    Object::Primitive(Primitive::Integer(value)) => Ok(func(value)),
+                                    Object::Primitive(Primitive::Integer(value)) => Ok(func(value)?),
                                     _                                            => Err(String::from("Built in function IntToString expected Integer parameter"))
                                 }
                             }
@@ -285,7 +293,7 @@ impl Interpreter {
                             } else {
                                 let parameter = self.visit_expr(&given_parameters[0])?;
                                 match parameter {
-                                    Object::Primitive(Primitive::Float(value)) => Ok(func(value)),
+                                    Object::Primitive(Primitive::Float(value)) => Ok(func(value)?),
                                     _                                          => Err(String::from("Built in function RealToString expected Real parameter"))
                                 }
                             }

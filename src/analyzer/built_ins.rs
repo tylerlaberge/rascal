@@ -5,7 +5,11 @@ use super::symbol::CallableSymbol;
 use parser::ast::TypeSpec;
 
 pub fn writeln_procedure() -> Symbol {
-    return Symbol::Callable(CallableSymbol::Procedure(String::from("writeln"), vec![VarSymbol::STRING(String::from("text"))]))
+    return Symbol::Callable(CallableSymbol::Procedure(String::from("writeln"), vec![VarSymbol::STRING(String::from("text"))]));
+}
+
+pub fn readln_procedure() -> Symbol {
+    return Symbol::Callable(CallableSymbol::Function(String::from("readln"), vec![], TypeSpec::STRING));
 }
 
 pub fn int_to_string_function() -> Symbol {

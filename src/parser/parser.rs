@@ -37,7 +37,7 @@ use super::ast::Expr;
 ///     assignment_statement  :: variable ASSIGN expr SEMI
 ///     variable              :: ID
 ///     function_call         :: variable LPAREN (call_parameters)? RPAREN SEMI
-///     call_parameters       :: expr | expr COMMA call_parameters
+///     call_parameters       :: expr (COMMA expr)* | empty
 ///     expr                  :: unaryop_expr | binop_expr | grouped_expr | function_call | literal | variable
 ///     unaryop_expr          :: unaryop expr
 ///     unaryop               :: PLUS | MINUS | NOT
@@ -47,6 +47,7 @@ use super::ast::Expr;
 ///                              GREATER_THAN_OR_EQUAL | EQUAL | NOT_EQUAL
 ///     grouped_expr          :: LPAREN expr RPAREN
 ///     literal               :: INTEGER_CONST | REAL_CONST | BOOLEAN_CONST | STRING_LITERAL
+///     empty                 ::
 /// </pre>
 pub struct Parser<'a> {
     pub lexer: Lexer<'a>
@@ -409,17 +410,21 @@ impl<'a> Parser<'a> {
     }
 
     /// <pre>
-    ///     call_parameters :: expr | expr COMMA call_parameters
+    ///     call_parameters :: expr (COMMA expr)* | empty
     /// </pre>
     pub fn call_parameters(&mut self) -> Result<CallParameters, String> {
-        let mut parameters = vec![self.expr(None)?];
+        if let Some(&Token::RPAREN) = self.lexer.peek() {
+            return Ok(CallParameters::Parameters(vec![]));
+        } else {
+            let mut parameters = vec![self.expr(None)?];
 
-        while let Some(&Token::COMMA) = self.lexer.peek() {
-            self.lexer.next(); // eat the comma
-            parameters.push(self.expr(None)?);
+            while let Some(&Token::COMMA) = self.lexer.peek() {
+                self.lexer.next(); // eat the comma
+                parameters.push(self.expr(None)?);
+            }
+
+            return Ok(CallParameters::Parameters(parameters));
         }
-
-        return Ok(CallParameters::Parameters(parameters));
     }
 
     pub fn expr(&mut self, precedence: Option<u32>) -> Result<Expr, String> {
