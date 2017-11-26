@@ -56,6 +56,7 @@ impl Interpreter {
     }
 
     fn init_built_ins(&mut self) -> Result<(), String> {
+        self.scope()?.set(String::from("write"), Object::BuiltInFunction(BuiltInFunction::Write(built_ins::write)));
         self.scope()?.set(String::from("writeln"), Object::BuiltInFunction(BuiltInFunction::WriteLn(built_ins::writeln)));
         self.scope()?.set(String::from("readln"), Object::BuiltInFunction(BuiltInFunction::ReadLn(built_ins::readln)));
         self.scope()?.set(String::from("IntToString"), Object::BuiltInFunction(BuiltInFunction::IntToString(built_ins::int_to_string)));
@@ -260,6 +261,17 @@ impl Interpreter {
                         Ok(Object::Unit)
                     },
                     Object::BuiltInFunction(built_in_function) => match built_in_function {
+                        BuiltInFunction::Write(func) => {
+                            if given_parameters.len() != 1 {
+                                Err(String::from("Built in function write expected 1 parameter"))
+                            } else {
+                                let parameter = self.visit_expr(&given_parameters[0])?;
+                                match parameter {
+                                    Object::Primitive(Primitive::String(text)) => Ok(func(text)?),
+                                    _                                          => Err(String::from("Built in function write expected String parameter"))
+                                }
+                            }
+                        },
                         BuiltInFunction::WriteLn(func) => {
                             if given_parameters.len() != 1 {
                                 Err(String::from("Built in function writeln expected 1 parameter"))

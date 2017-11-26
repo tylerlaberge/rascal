@@ -4,6 +4,10 @@ use super::symbol::CallableSymbol;
 
 use parser::ast::TypeSpec;
 
+pub fn write_procedure() -> Symbol {
+    return Symbol::Callable(CallableSymbol::Procedure(String::from("write"), vec![VarSymbol::STRING(String::from("text"))]));
+}
+
 pub fn writeln_procedure() -> Symbol {
     return Symbol::Callable(CallableSymbol::Procedure(String::from("writeln"), vec![VarSymbol::STRING(String::from("text"))]));
 }

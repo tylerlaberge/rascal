@@ -15,6 +15,7 @@ pub enum Object {
 
 #[derive(Clone)]
 pub enum BuiltInFunction {
+    Write(fn(String) -> Result<Object, String>),
     WriteLn(fn(String) -> Result<Object, String>),
     ReadLn(fn() -> Result<Object, String>),
     IntToString(fn(i32) -> Result<Object, String>),
@@ -194,6 +195,7 @@ impl Debug for Object {
             &Object::Primitive(ref primitive)                              => write!(f, "{:?}", primitive),
             &Object::Procedure(ref name, ref variables, _)                 => write!(f, "Procedure<{}, {:?}>", name, variables),
             &Object::Function(ref name, ref variables, _, ref return_type) => write!(f, "Function<{}, {:?} -> {:?}>", name, variables, return_type),
+            &Object::BuiltInFunction(BuiltInFunction::Write(_))            => write!(f, "BuiltInFunction<Write, (String) -> ()>"),
             &Object::BuiltInFunction(BuiltInFunction::WriteLn(_))          => write!(f, "BuiltInFunction<WriteLn, (String) -> ()>"),
             &Object::BuiltInFunction(BuiltInFunction::ReadLn(_))           => write!(f, "BuiltInFunction<ReadLn, () -> String>"),
             &Object::BuiltInFunction(BuiltInFunction::IntToString(_))      => write!(f, "BuiltInFunction<IntToString, (Integer) -> String>"),
