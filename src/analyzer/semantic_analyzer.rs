@@ -61,6 +61,8 @@ impl SemanticAnalyzer {
         self.scope()?.define(built_ins::readln_procedure());
         self.scope()?.define(built_ins::int_to_string_function());
         self.scope()?.define(built_ins::real_to_string_function());
+        self.scope()?.define(built_ins::string_to_int_function());
+        self.scope()?.define(built_ins::string_to_real_function());
 
         return Ok(());
     }

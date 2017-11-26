@@ -60,6 +60,8 @@ impl Interpreter {
         self.scope()?.set(String::from("readln"), Object::BuiltInFunction(BuiltInFunction::ReadLn(built_ins::readln)));
         self.scope()?.set(String::from("IntToString"), Object::BuiltInFunction(BuiltInFunction::IntToString(built_ins::int_to_string)));
         self.scope()?.set(String::from("RealToString"), Object::BuiltInFunction(BuiltInFunction::RealToString(built_ins::real_to_string)));
+        self.scope()?.set(String::from("StringToInt"), Object::BuiltInFunction(BuiltInFunction::StringToInt(built_ins::string_to_int)));
+        self.scope()?.set(String::from("StringToReal"), Object::BuiltInFunction(BuiltInFunction::StringToReal(built_ins::string_to_real)));
 
         return Ok(());
     }
@@ -295,6 +297,28 @@ impl Interpreter {
                                 match parameter {
                                     Object::Primitive(Primitive::Float(value)) => Ok(func(value)?),
                                     _                                          => Err(String::from("Built in function RealToString expected Real parameter"))
+                                }
+                            }
+                        },
+                        BuiltInFunction::StringToInt(func) => {
+                            if given_parameters.len() != 1 {
+                                Err(String::from("Built in function StringToInt expected 1 parameter"))
+                            } else {
+                                let parameter = self.visit_expr(&given_parameters[0])?;
+                                match parameter {
+                                    Object::Primitive(Primitive::String(text)) => Ok(func(text)?),
+                                    _                                          => Err(String::from("Built in function StringToInt expected String parameter"))
+                                }
+                            }
+                        },
+                        BuiltInFunction::StringToReal(func) => {
+                            if given_parameters.len() != 1 {
+                                Err(String::from("Built in function StringToReal expected 1 parameter"))
+                            } else {
+                                let parameter = self.visit_expr(&given_parameters[0])?;
+                                match parameter {
+                                    Object::Primitive(Primitive::String(text)) => Ok(func(text)?),
+                                    _                                          => Err(String::from("Built in function StringToReal expected String parameter"))
                                 }
                             }
                         }

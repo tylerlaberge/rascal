@@ -25,3 +25,17 @@ pub fn int_to_string(value: i32) -> Result<Object, String> {
 pub fn real_to_string(value: f32) -> Result<Object, String> {
     return Ok(Object::Primitive(Primitive::String(value.to_string())));
 }
+
+pub fn string_to_int(text: String) -> Result<Object, String> {
+    return match text.trim().parse::<i32>() {
+        Ok(num) => Ok(Object::Primitive(Primitive::Integer(num))),
+        Err(_)  => Err(String::from("Could not convert string to integer"))
+    };
+}
+
+pub fn string_to_real(text: String) -> Result<Object, String> {
+    return match text.trim().parse::<f32>() {
+        Ok(num) => Ok(Object::Primitive(Primitive::Float(num))),
+        Err(_)  => Err(String::from("Could not convert string to real"))
+    };
+}

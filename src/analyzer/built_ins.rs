@@ -19,3 +19,11 @@ pub fn int_to_string_function() -> Symbol {
 pub fn real_to_string_function() -> Symbol {
     return Symbol::Callable(CallableSymbol::Function(String::from("RealToString"), vec![VarSymbol::REAL(String::from("value"))], TypeSpec::STRING));
 }
+
+pub fn string_to_int_function() -> Symbol {
+    return Symbol::Callable(CallableSymbol::Function(String::from("StringToInt"), vec![VarSymbol::STRING(String::from("text"))], TypeSpec::INTEGER));
+}
+
+pub fn string_to_real_function() -> Symbol {
+    return Symbol::Callable(CallableSymbol::Function(String::from("StringToReal"), vec![VarSymbol::STRING(String::from("text"))], TypeSpec::REAL));
+}
