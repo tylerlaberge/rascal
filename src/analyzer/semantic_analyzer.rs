@@ -157,7 +157,9 @@ impl SemanticAnalyzer {
                     (TypeSpec::INTEGER, &TypeSpec::INTEGER) => Ok(()),
                     (TypeSpec::REAL, &TypeSpec::REAL)       => Ok(()),
                     (TypeSpec::BOOLEAN, &TypeSpec::BOOLEAN) => Ok(()),
-                    (actual, expected)                      => Err(String::from(format!("Mismatching return types. Declared return type of {:?}, actual return type of {:?}", expected, actual)))
+                    (actual, expected)                      => Err(String::from(
+                        format!("Semantic Analyzer Error: Mismatching return types in function '{:?}'. Declared return type of {:?}, actual return type of {:?}", name, expected, actual)
+                    ))
                 }?;
 
                 self.leave_scope();
@@ -211,7 +213,7 @@ impl SemanticAnalyzer {
                     }
                     Ok(vars.to_vec())
                 },
-                _                  => Err(String::from("Semantic Error"))
+                &TypeSpec::UNIT     => Err(String::from("Internal Semantic Analyzer Error: Formal Parameter of type Unit"))
             }
         };
     }
@@ -222,7 +224,7 @@ impl SemanticAnalyzer {
                 for name in names {
                     match self.scope()?.local_lookup(name) {
                         None    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::REAL(name.to_owned())))),
-                        Some(_) => Err(String::from(format!("Variable declared more than once: {}", name)))
+                        Some(_) => Err(String::from(format!("Semantic Analyzer Error: Variable declared more than once: {}", name)))
                     }?;
                 }
 
@@ -232,7 +234,7 @@ impl SemanticAnalyzer {
                 for name in names {
                     match self.scope()?.local_lookup(name) {
                         None    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::INTEGER(name.to_owned())))),
-                        Some(_) => Err(String::from(format!("Variable declared more than once: {}", name)))
+                        Some(_) => Err(String::from(format!("Semantic Analyzer Error: Variable declared more than once: {}", name)))
                     }?;
                 }
 
@@ -242,7 +244,7 @@ impl SemanticAnalyzer {
                 for name in names {
                     match self.scope()?.local_lookup(name) {
                         None    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::STRING(name.to_owned())))),
-                        Some(_) => Err(String::from(format!("Variable declared more than once: {}", name)))
+                        Some(_) => Err(String::from(format!("Semantic Analyzer Error: Variable declared more than once: {}", name)))
                     }?;
                 }
 
@@ -258,7 +260,7 @@ impl SemanticAnalyzer {
 
                 Ok(())
             },
-            _                                                            => Err(String::from("Semantic Error"))
+            &VariableDeclaration::Variables(_, TypeSpec::UNIT)            => Err(String::from("Internal Semantic Analyzer Error: Variable Declaration of type Unit"))
         }?;
 
         return Ok(());
@@ -291,7 +293,7 @@ impl SemanticAnalyzer {
             &IfStatement::If(ref expr, ref compound_statement) => {
                 match self.visit_expr(expr)? {
                     TypeSpec::BOOLEAN => Ok(()),
-                    _                 => Err(String::from("If statement must use a boolean expression"))
+                    _                 => Err(String::from("Semantic Analyzer Error: If statement must use a boolean expression"))
                 }?;
 
                 self.visit_compound(compound_statement)?;
@@ -300,7 +302,7 @@ impl SemanticAnalyzer {
             &IfStatement::IfElse(ref expr, ref if_compound_statement, ref else_compound_statement) => {
                 match self.visit_expr(expr)? {
                     TypeSpec::BOOLEAN => Ok(()),
-                    _                 => Err(String::from("If statement must use a boolean expression"))
+                    _                 => Err(String::from("Semantic Analyzer Error: If statement must use a boolean expression"))
                 }?;
 
                 self.visit_compound(if_compound_statement)?;
@@ -310,7 +312,7 @@ impl SemanticAnalyzer {
             &IfStatement::IfElseIf(ref expr, ref if_compound_statement, ref else_if_statement) => {
                 match self.visit_expr(expr)? {
                     TypeSpec::BOOLEAN => Ok(()),
-                    _                 => Err(String::from("If statement must use a boolean expression"))
+                    _                 => Err(String::from("Semantic Analyzer Error: If statement must use a boolean expression"))
                 }?;
 
                 self.visit_compound(if_compound_statement)?;
@@ -325,7 +327,7 @@ impl SemanticAnalyzer {
             &Assignment::Assign(Variable::Var(ref name), ref expression) => {
                 let symbol = match self.scope()?.lookup(name) {
                     Some(symbol)  => Ok(symbol.clone()),
-                    None          => Err(String::from(format!("Variable {} was never defined", name)))
+                    None          => Err(String::from(format!("Semantic Analyzer Error: Variable {} was never defined", name)))
                 }?;
 
                 match (symbol, self.visit_expr(expression)?) {
@@ -333,8 +335,9 @@ impl SemanticAnalyzer {
                     (Symbol::Var(VarSymbol::REAL(_)), TypeSpec::REAL)       => Ok(TypeSpec::REAL),
                     (Symbol::Var(VarSymbol::STRING(_)), TypeSpec::STRING)   => Ok(TypeSpec::STRING),
                     (Symbol::Var(VarSymbol::BOOLEAN(_)), TypeSpec::BOOLEAN) => Ok(TypeSpec::BOOLEAN),
-                    (_, TypeSpec::UNIT)                                     => Err(String::from("Can't assign procedure call")),
-                    (_, _)                                                  => Err(String::from("Can't assign mismatched types"))
+                    (Symbol::Var(var_symbol), TypeSpec::UNIT)               => Err(String::from(format!("Semantic Analyzer Error: Attempted to assign {:?} to a statement with no return type", var_symbol))),
+                    (Symbol::Var(var_symbol), type_spec)                    => Err(String::from(format!("Semantic Analyzer Error: Mismatched Types, Attempted to assign {:?} to {:?}", type_spec, var_symbol))),
+                    (Symbol::Callable(callable), _)                         => Err(String::from(format!("Semantic Analyzer Error: Attempted to assign expression to callable {:?}", callable)))
                 }
             }
         };
@@ -345,7 +348,7 @@ impl SemanticAnalyzer {
             &FunctionCall::Call(Variable::Var(ref name), ref parameters) => {
                 let callable =  match self.scope()?.lookup(name) {
                     Some(&Symbol::Callable(ref callable))   => Ok(callable.clone()),
-                    _                                       => Err(String::from("Unknown callable"))
+                    _                                       => Err(String::from(format!("Semantic Analyzer Error: Unknown callable '{:?}'", name)))
                 }?;
                 let declared_params = match callable {
                     CallableSymbol::Procedure(_, ref declared_params)  => declared_params.to_vec(),
@@ -360,7 +363,7 @@ impl SemanticAnalyzer {
                             (&VarSymbol::REAL(_), &TypeSpec::REAL)       => Ok(()),
                             (&VarSymbol::STRING(_), &TypeSpec::STRING)   => Ok(()),
                             (&VarSymbol::BOOLEAN(_), &TypeSpec::BOOLEAN) => Ok(()),
-                            (expected, actual)                           => Err(String::from(format!("Callable expected {:?}, but {:?} was given", expected, actual)))
+                            (expected, actual)                           => Err(String::from(format!("Semantic Analyzer Error: Callable expected parameter of type {:?}, but {:?} was given", expected, actual)))
                         }?;
                     }
                     match callable {
@@ -368,7 +371,7 @@ impl SemanticAnalyzer {
                         CallableSymbol::Function(_, _, type_spec) => Ok(type_spec)
                     }
                 } else {
-                    Err(String::from("Wrong number of arguments"))
+                    Err(String::from(format!("Semantic Analyzer Error: Callable {:?} expected {:?} arguments, but {:?} were given", callable, declared_params.len(), given_params.len())))
                 }
             }
         }
@@ -408,7 +411,9 @@ impl SemanticAnalyzer {
                     (&UnaryOperator::Plus, TypeSpec::REAL)     => Ok(TypeSpec::REAL),
                     (&UnaryOperator::Minus, TypeSpec::REAL)    => Ok(TypeSpec::REAL),
                     (&UnaryOperator::Not, TypeSpec::BOOLEAN)   => Ok(TypeSpec::BOOLEAN),
-                    _                                          => Err(String::from("Mismatching Types"))
+                    (operator, type_spec)                      => Err(String::from(
+                        format!("Semantic Analyzer Error: Attempted to use unary operator {:?} with incompatible type {:?}", operator, type_spec)
+                    ))
             }
         };
     }
@@ -442,7 +447,12 @@ impl SemanticAnalyzer {
                     (TypeSpec::STRING, &BinaryOperator::Plus, TypeSpec::STRING)                 => Ok(TypeSpec::STRING),
                     (TypeSpec::BOOLEAN, &BinaryOperator::And, TypeSpec::BOOLEAN)                => Ok(TypeSpec::BOOLEAN),
                     (TypeSpec::BOOLEAN, &BinaryOperator::Or, TypeSpec::BOOLEAN)                 => Ok(TypeSpec::BOOLEAN),
-                    _                                                                           => Err(String::from("Mismatching types"))
+
+                    (TypeSpec::INTEGER, operator, TypeSpec::INTEGER)                            => Err(String::from(format!("Semantic Analyzer Error: Binary operator {:?} is incompatible with {:?} types", operator, TypeSpec::INTEGER))),
+                    (TypeSpec::REAL, operator, TypeSpec::REAL)                                  => Err(String::from(format!("Semantic Analyzer Error: Binary operator {:?} is incompatible with {:?} types", operator, TypeSpec::REAL))),
+                    (TypeSpec::STRING, operator, TypeSpec::STRING)                              => Err(String::from(format!("Semantic Analyzer Error: Binary operator {:?} is incompatible with {:?} types", operator, TypeSpec::STRING))),
+                    (TypeSpec::BOOLEAN, operator, TypeSpec::BOOLEAN)                            => Err(String::from(format!("Semantic Analyzer Error: Binary operator {:?} is incompatible with {:?} types", operator, TypeSpec::BOOLEAN))),
+                    (type_spec_left, operator, type_spec_right)                                 => Err(String::from(format!("Semantic Analyzer Error: Attempted to use binary operator {:?} with mismatching types {:?} and {:?}", operator, type_spec_left, type_spec_right)))
                 }
         };
     }
@@ -471,9 +481,9 @@ impl SemanticAnalyzer {
                         &Symbol::Var(VarSymbol::REAL(_))    => Ok(TypeSpec::REAL),
                         &Symbol::Var(VarSymbol::STRING(_))  => Ok(TypeSpec::STRING),
                         &Symbol::Var(VarSymbol::BOOLEAN(_)) => Ok(TypeSpec::BOOLEAN),
-                        _                                   => Err(String::from("Procedure cannot be a variable"))
+                        &Symbol::Callable(ref callable)     => Err(String::from(format!("Semantic Analyzer Error: Attempted to use callable {:?} as a variable", callable)))
                     },
-                    None         => Err(String::from(format!("Unknown variable: {}", name)))
+                    None         => Err(String::from(format!("Semantic Analyzer Error: Unknown variable with name {}", name)))
                 }
             }
         };
@@ -499,7 +509,7 @@ impl SemanticAnalyzer {
     fn scope(&mut self) -> Result<&mut SymbolTable, String> {
         return match self.scope {
             Some(ref mut scope) => Ok(scope),
-            None                => Err(String::from("Unknown Scope"))
+            None                => Err(String::from("Internal Semantic Analyzer Error: Unknown Scope"))
         };
     }
 }

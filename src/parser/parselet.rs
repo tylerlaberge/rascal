@@ -48,30 +48,34 @@ impl PrefixParselet {
             &Token::REAL_CONST(i)         => Ok(Literal::Float(i)),
             &Token::STRING_LITERAL(ref s) => Ok(Literal::String(s.clone())),
             &Token::BOOLEAN_CONST(b)      => Ok(Literal::Boolean(b)),
-            _                             => Err(String::from("Literal Parse Error"))
+            _                             => Err(String::from("Literal Parse Error: Expected integer, real, string, or boolean const"))
         };
     }
 
     fn grouping(&self, parser: &mut Parser, token: &Token) -> Result<GroupedExpr, String> {
-        return match (token, parser.expr(None)?, parser.lexer.next()) {
-            (&Token::LPAREN, expr, Some(Token::RPAREN)) => Ok(GroupedExpr::Group(expr)),
-            _                                           => Err(String::from("Grouping Parse Error"))
+        return match token {
+            &Token::LPAREN => match (parser.expr(None)?, parser.lexer.next()) {
+                (expr, Some(Token::RPAREN)) => Ok(GroupedExpr::Group(expr)),
+                (expr, _)                   => Err(String::from(format!("Grouping Parse Error: Expected token {:?} after {:?}", Token::RPAREN, expr)))
+            },
+            _              => Err(String::from(format!("Grouping Parse Error: Expected token {:?}", Token::LPAREN)))
         };
     }
 
     fn variable(&self, parser: &mut Parser, token: &Token) -> Result<Variable, String> {
         return match token {
             &Token::ID(ref name) => Ok(Variable::Var(name.clone())),
-            _                    => Err(String::from("Variable Parse Error"))
+            _                    => Err(String::from("Variable Parse Error: Expected token id"))
         };
     }
 
     fn unary_op(&self, parser: &mut Parser, token: &Token) -> Result<UnaryOpExpr, String> {
-        return match (token, parser.expr(Some(self.get_precedence()))?) {
-            (&Token::PLUS, operand)  => Ok(UnaryOpExpr::UnaryOp(UnaryOperator::Plus, operand)),
-            (&Token::MINUS, operand) => Ok(UnaryOpExpr::UnaryOp(UnaryOperator::Minus, operand)),
-            (&Token::NOT, operand)   => Ok(UnaryOpExpr::UnaryOp(UnaryOperator::Not, operand)),
-            _                        => Err(String::from("Unary Op Parse Error"))
+        return match token {
+            &Token::PLUS  => Ok(UnaryOpExpr::UnaryOp(UnaryOperator::Plus, parser.expr(Some(self.get_precedence()))?)),
+            &Token::MINUS => Ok(UnaryOpExpr::UnaryOp(UnaryOperator::Minus, parser.expr(Some(self.get_precedence()))?)),
+            &Token::NOT   => Ok(UnaryOpExpr::UnaryOp(UnaryOperator::Not, parser.expr(Some(self.get_precedence()))?)),
+            _             => Err(String::from(format!("Unary Op Parse Error: Expected one of {:?}", vec![Token::PLUS, Token::MINUS, Token::NOT])))
+
         };
     }
 }
@@ -93,29 +97,37 @@ impl InfixParselet {
     }
 
     fn binary_op(&self, parser: &mut Parser, left: &Expr, token: &Token) -> Result<BinaryOpExpr, String> {
-        return match (token, parser.expr(Some(self.get_precedence()))?) {
-            (&Token::PLUS, right)                  => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Plus, right)),
-            (&Token::MINUS, right)                 => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Minus, right)),
-            (&Token::MULTIPLY, right)              => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Multiply, right)),
-            (&Token::INTEGER_DIV, right)           => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::IntegerDivide, right)),
-            (&Token::FLOAT_DIV, right)             => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::FloatDivide, right)),
-            (&Token::AND, right)                   => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::And, right)),
-            (&Token::OR, right)                    => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Or, right)),
-            (&Token::LESS_THAN, right)             => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::LessThan, right)),
-            (&Token::LESS_THAN_OR_EQUAL, right)    => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::LessThanOrEqual, right)),
-            (&Token::GREATER_THAN, right)          => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::GreaterThan, right)),
-            (&Token::GREATER_THAN_OR_EQUAL, right) => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::GreaterThanOrEqual, right)),
-            (&Token::EQUAL, right)                 => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Equal, right)),
-            (&Token::NOT_EQUAL, right)             => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::NotEqual, right)),
-
-            _                                      => Err(String::from("Binary Op Parse Error"))
+        return match token {
+            &Token::PLUS                  => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Plus,              parser.expr(Some(self.get_precedence()))?)),
+            &Token::MINUS                 => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Minus,             parser.expr(Some(self.get_precedence()))?)),
+            &Token::MULTIPLY              => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Multiply,          parser.expr(Some(self.get_precedence()))?)),
+            &Token::INTEGER_DIV           => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::IntegerDivide,     parser.expr(Some(self.get_precedence()))?)),
+            &Token::FLOAT_DIV             => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::FloatDivide,       parser.expr(Some(self.get_precedence()))?)),
+            &Token::AND                   => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::And,               parser.expr(Some(self.get_precedence()))?)),
+            &Token::OR                    => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Or,                parser.expr(Some(self.get_precedence()))?)),
+            &Token::LESS_THAN             => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::LessThan,          parser.expr(Some(self.get_precedence()))?)),
+            &Token::LESS_THAN_OR_EQUAL    => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::LessThanOrEqual,   parser.expr(Some(self.get_precedence()))?)),
+            &Token::GREATER_THAN          => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::GreaterThan,       parser.expr(Some(self.get_precedence()))?)),
+            &Token::GREATER_THAN_OR_EQUAL => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::GreaterThanOrEqual,parser.expr(Some(self.get_precedence()))?)),
+            &Token::EQUAL                 => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::Equal,             parser.expr(Some(self.get_precedence()))?)),
+            &Token::NOT_EQUAL             => Ok(BinaryOpExpr::BinaryOp(left.clone(), BinaryOperator::NotEqual,          parser.expr(Some(self.get_precedence()))?)),
+            _                             => Err(
+                String::from(format!("Binary Op Parse Error: Expected one of {:?}", vec![
+                    Token::PLUS, Token::MINUS, Token::MULTIPLY, Token::INTEGER_DIV, Token::FLOAT_DIV, Token::AND,
+                    Token::OR, Token::LESS_THAN, Token::LESS_THAN_OR_EQUAL, Token::GREATER_THAN, Token::GREATER_THAN_OR_EQUAL,
+                    Token::EQUAL, Token::NOT_EQUAL
+                ]))
+            )
         };
     }
 
     fn function_call(&self, parser: &mut Parser, left: &Expr, token: &Token) -> Result<FunctionCall, String> {
-        return match (left, token, parser.call_parameters()?, parser.lexer.next()) {
-            (&Expr::Variable(ref name), &Token::LPAREN, ref parameters, Some(Token::RPAREN)) => Ok(FunctionCall::Call(name.clone(), parameters.clone())),
-            _                                                                                => Err(String::from("Function Call Parse Error"))
+        return match (left, token) {
+            (&Expr::Variable(ref name), &Token::LPAREN) => match (parser.call_parameters()?, parser.lexer.next()) {
+                (parameters, Some(Token::RPAREN)) => Ok(FunctionCall::Call(name.clone(), parameters)),
+                (parameters, _)                   => Err(String::from(format!("Function Call Parse Error: Expected token {:?} after {:?}", Token::RPAREN, parameters)))
+            },
+            (_, _)                                      => Err(String::from(format!("Function Call Parse Error: Expected variable token and {:?}", Token::LPAREN)))
         };
     }
 }

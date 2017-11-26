@@ -42,7 +42,7 @@ impl Object {
                 => Ok(Object::Primitive(Primitive::Float(left + right))),
             (&Object::Primitive(Primitive::String(ref left)), &Object::Primitive(Primitive::String(ref right)))
                 => Ok(Object::Primitive(Primitive::String(format!("{}{}", left, right)))),
-            _   => Err(String::from("Interpreter Addition Error"))
+            _   => Err(String::from("Internal Interpreter Error: Attempted to add incompatible types"))
         };
     }
 
@@ -52,7 +52,7 @@ impl Object {
                 => Ok(Object::Primitive(Primitive::Integer(left - right))),
             (&Object::Primitive(Primitive::Float(ref left)), &Object::Primitive(Primitive::Float(ref right)))
                 => Ok(Object::Primitive(Primitive::Float(left - right))),
-            _   => Err(String::from("Interpreter Subtraction Error"))
+            _   => Err(String::from("Interpreter Interpreter Error: Attempted to subtract incompatible types"))
 
         };
     }
@@ -63,7 +63,7 @@ impl Object {
                 => Ok(Object::Primitive(Primitive::Integer(left * right))),
             (&Object::Primitive(Primitive::Float(ref left)), &Object::Primitive(Primitive::Float(ref right)))
                 => Ok(Object::Primitive(Primitive::Float(left * right))),
-            _   => Err(String::from("Interpreter Multiplication Error"))
+            _   => Err(String::from("Internal Interpreter Error: Attempted to multiply incompatible types"))
 
         };
     }
@@ -72,7 +72,7 @@ impl Object {
         return match (self, other) {
             (&Object::Primitive(Primitive::Integer(ref left)), &Object::Primitive(Primitive::Integer(ref right)))
                 => Ok(Object::Primitive(Primitive::Integer(left / right))),
-            _   => Err(String::from("Interpreter Integer Division Error"))
+            _   => Err(String::from("Internal Interpreter Error: Attempted to integer divide incompatible types"))
 
         };
     }
@@ -81,7 +81,7 @@ impl Object {
         return match (self, other) {
             (&Object::Primitive(Primitive::Float(ref left)), &Object::Primitive(Primitive::Float(ref right)))
                 => Ok(Object::Primitive(Primitive::Float(left / right))),
-            _   => Err(String::from("Interpreter Float Division Error"))
+            _   => Err(String::from("Internal Interpreter Error: Attempted to float divide incompatible types"))
 
         };
     }
@@ -90,7 +90,7 @@ impl Object {
         return match self {
             &Object::Primitive(Primitive::Integer(i)) => Ok(Object::Primitive(Primitive::Integer(i))),
             &Object::Primitive(Primitive::Float(i))   => Ok(Object::Primitive(Primitive::Float(i))),
-            _                                         => Err(String::from("Interpreter Unary Plus Error"))
+            _                                         => Err(String::from("Internal Interpreter Error: Attempted to unary add incompatible type"))
 
         };
     }
@@ -99,7 +99,7 @@ impl Object {
         return match self {
             &Object::Primitive(Primitive::Integer(i)) => Ok(Object::Primitive(Primitive::Integer(-i))),
             &Object::Primitive(Primitive::Float(i))   => Ok(Object::Primitive(Primitive::Float(-i))),
-            _                                         => Err(String::from("Interpreter Unary Minus Error"))
+            _                                         => Err(String::from("Internal Interpreter Error: Attempted to unary subtract incompatible type"))
         };
     }
 
@@ -107,7 +107,7 @@ impl Object {
         return match (self, other) {
             (&Object::Primitive(Primitive::Boolean(left)), &Object::Primitive(Primitive::Boolean(right)))
                 => Ok(Object::Primitive(Primitive::Boolean(left && right))),
-            _   => Err(String::from("Interpreter Boolean And Error"))
+            _   => Err(String::from("Internal Interpreter Error: Attempted to boolean 'and' incompatible types"))
         };
     }
 
@@ -115,14 +115,14 @@ impl Object {
         return match (self, other) {
             (&Object::Primitive(Primitive::Boolean(left)), &Object::Primitive(Primitive::Boolean(right)))
             => Ok(Object::Primitive(Primitive::Boolean(left || right))),
-            _   => Err(String::from("Interpreter Boolean Or Error"))
+            _   => Err(String::from("Internal Interpreter Error: Attempted to boolean 'or' incompatible types"))
         };
     }
 
     pub fn negate(&self) -> Result<Self, String> {
         return match self {
             &Object::Primitive(Primitive::Boolean(b)) => Ok(Object::Primitive(Primitive::Boolean(!b))),
-            _                                         => Err(String::from("Interpreter Negation Error"))
+            _                                         => Err(String::from("Internal Interpreter Error: Attempted to boolean negate incompatible type"))
         };
     }
 
@@ -132,7 +132,7 @@ impl Object {
                 => Ok(Object::Primitive(Primitive::Boolean(left < right))),
             (&Object::Primitive(Primitive::Float(left)), &Object::Primitive(Primitive::Float(right)))
                 => Ok(Object::Primitive(Primitive::Boolean(left < right))),
-            _   => Err(String::from("Interpreter Less Than Error"))
+            _   => Err(String::from("Internal Interpreter Error: Attempted to compare 'less than' with incompatible types"))
         };
     }
 
@@ -142,7 +142,7 @@ impl Object {
             => Ok(Object::Primitive(Primitive::Boolean(left <= right))),
             (&Object::Primitive(Primitive::Float(left)), &Object::Primitive(Primitive::Float(right)))
             => Ok(Object::Primitive(Primitive::Boolean(left <= right))),
-            _   => Err(String::from("Interpreter Less Than Or Equal Error"))
+            _   => Err(String::from("Internal Interpreter Error: Attempted to compare 'less than or equal' with incompatible types"))
         };
     }
 
@@ -152,7 +152,7 @@ impl Object {
             => Ok(Object::Primitive(Primitive::Boolean(left > right))),
             (&Object::Primitive(Primitive::Float(left)), &Object::Primitive(Primitive::Float(right)))
             => Ok(Object::Primitive(Primitive::Boolean(left > right))),
-            _   => Err(String::from("Interpreter Greater Than Error"))
+            _   => Err(String::from("Internal Interpreter Error: Attempted to compare 'greater than' with incompatible types"))
         };
     }
 
@@ -162,7 +162,7 @@ impl Object {
             => Ok(Object::Primitive(Primitive::Boolean(left >= right))),
             (&Object::Primitive(Primitive::Float(left)), &Object::Primitive(Primitive::Float(right)))
             => Ok(Object::Primitive(Primitive::Boolean(left >= right))),
-            _   => Err(String::from("Interpreter Greater Than Or Equal Error"))
+            _   => Err(String::from("Internal Interpreter Error: Attempted to compare 'greater than or equal' with incompatible types"))
         };
     }
 
@@ -172,7 +172,7 @@ impl Object {
             => Ok(Object::Primitive(Primitive::Boolean(left == right))),
             (&Object::Primitive(Primitive::Float(left)), &Object::Primitive(Primitive::Float(right)))
             => Ok(Object::Primitive(Primitive::Boolean(left == right))),
-            _   => Err(String::from("Interpreter Equal Error"))
+            _   => Err(String::from("Internal Interpreter Error: Attempted to compare 'equal' with incompatible types"))
         };
     }
 
@@ -182,7 +182,7 @@ impl Object {
             => Ok(Object::Primitive(Primitive::Boolean(left != right))),
             (&Object::Primitive(Primitive::Float(left)), &Object::Primitive(Primitive::Float(right)))
             => Ok(Object::Primitive(Primitive::Boolean(left != right))),
-            _   => Err(String::from("Interpreter Not Equal Error"))
+            _   => Err(String::from("Internal Interpreter Error: Attempted to compare 'not equal' with incompatible types"))
         };
     }
 
