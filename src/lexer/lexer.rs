@@ -209,3 +209,327 @@ impl<'a> Iterator for Lexer<'a> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn program_token() {
+        let source = Source::new("program");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::PROGRAM));
+    }
+
+    #[test]
+    fn procedure_token() {
+        let source = Source::new("procedure");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::PROCEDURE));
+    }
+
+    #[test]
+    fn function_token() {
+        let source = Source::new("function");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::FUNCTION));
+    }
+
+    #[test]
+    fn var_token() {
+        let source = Source::new("var");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::VAR));
+    }
+
+    #[test]
+    fn comma_token() {
+        let source = Source::new(",");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::COMMA));
+    }
+
+    #[test]
+    fn colon_token() {
+        let source = Source::new(":");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::COLON));
+    }
+
+    #[test]
+    fn integer_token() {
+        let source = Source::new("integer");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::INTEGER));
+    }
+
+    #[test]
+    fn real_token() {
+        let source = Source::new("real");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::REAL));
+    }
+
+    #[test]
+    fn string_token() {
+        let source = Source::new("string");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::STRING));
+    }
+
+    #[test]
+    fn boolean_token() {
+        let source = Source::new("boolean");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::BOOLEAN));
+    }
+
+    #[test]
+    fn begin_token() {
+        let source = Source::new("begin");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::BEGIN));
+    }
+
+    #[test]
+    fn end_token() {
+        let source = Source::new("end");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::END));
+    }
+
+    #[test]
+    fn dot_token() {
+        let source = Source::new(".");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::DOT));
+    }
+
+    #[test]
+    fn semi_token() {
+        let source = Source::new(";");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::SEMI));
+    }
+
+    #[test]
+    fn assign_token() {
+        let source = Source::new(":=");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::ASSIGN));
+    }
+
+    #[test]
+    fn id_token() {
+        let source = Source::new("foobar");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::ID(String::from("foobar"))));
+    }
+
+    #[test]
+    fn plus_token() {
+        let source = Source::new("+");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::PLUS));
+    }
+
+    #[test]
+    fn minus_token() {
+        let source = Source::new("-");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::MINUS));
+    }
+
+    #[test]
+    fn multiply_token() {
+        let source = Source::new("*");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::MULTIPLY));
+    }
+
+    #[test]
+    fn integer_div_token() {
+        let source = Source::new("div");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::INTEGER_DIV));
+    }
+
+    #[test]
+    fn float_div_token() {
+        let source = Source::new("/");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::FLOAT_DIV));
+    }
+
+    #[test]
+    fn and_token() {
+        let source = Source::new("and");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::AND));
+    }
+
+    #[test]
+    fn or_token() {
+        let source = Source::new("or");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::OR));
+    }
+
+    #[test]
+    fn not_token() {
+        let source = Source::new("not");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::NOT));
+    }
+
+    #[test]
+    fn less_than_token() {
+        let source = Source::new("<");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::LESS_THAN));
+    }
+
+    #[test]
+    fn greater_than_token() {
+        let source = Source::new(">");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::GREATER_THAN));
+    }
+
+    #[test]
+    fn equal_token() {
+        let source = Source::new("=");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::EQUAL));
+    }
+
+    #[test]
+    fn not_equal_token() {
+        let source = Source::new("<>");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::NOT_EQUAL));
+    }
+
+    #[test]
+    fn less_than_or_equal_token() {
+        let source = Source::new("<=");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::LESS_THAN_OR_EQUAL));
+    }
+
+    #[test]
+    fn greater_than_or_equal_token() {
+        let source = Source::new(">=");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::GREATER_THAN_OR_EQUAL));
+    }
+
+    #[test]
+    fn integer_const_token() {
+        let source = Source::new("5");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::INTEGER_CONST(5)));
+    }
+
+    #[test]
+    fn real_const_token() {
+        let source = Source::new("5.5");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::REAL_CONST(5.5)));
+    }
+
+    #[test]
+    fn string_literal_token() {
+        let source = Source::new("'hello world'");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::STRING_LITERAL(String::from("hello world"))));
+    }
+
+    #[test]
+    fn boolean_const_token() {
+        let source = Source::new("true");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::BOOLEAN_CONST(true)));
+    }
+
+    #[test]
+    fn if_token() {
+        let source = Source::new("if");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::IF));
+    }
+
+    #[test]
+    fn then_token() {
+        let source = Source::new("then");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::THEN));
+    }
+
+    #[test]
+    fn else_token() {
+        let source = Source::new("else");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::ELSE));
+    }
+
+    #[test]
+    fn left_paren_token() {
+        let source = Source::new("(");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::LPAREN));
+    }
+
+    #[test]
+    fn right_paren_token() {
+        let source = Source::new(")");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::RPAREN));
+    }
+
+    #[test]
+    fn eof_token() {
+        let source = Source::new("");
+        let mut lexer = Lexer::new(source);
+
+        assert_eq!(lexer.next(), Some(Token::EOF));
+    }
+}

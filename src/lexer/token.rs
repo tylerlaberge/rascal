@@ -73,3 +73,46 @@ impl Iterator for TokenCache {
         return if self.tokens.is_empty() { None } else { Some(self.tokens.remove(0)) };
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn next() {
+        let mut token_cache = TokenCache::new();
+
+        token_cache.push(Token::BEGIN);
+        token_cache.push(Token::END);
+
+        assert_eq!(token_cache.next(), Some(Token::BEGIN));
+        assert_eq!(token_cache.next(), Some(Token::END));
+        assert_eq!(token_cache.next(), None)
+    }
+
+    #[test]
+    fn peek() {
+        let mut token_cache = TokenCache::new();
+
+        token_cache.push(Token::BEGIN);
+        token_cache.push(Token::END);
+
+        assert_eq!(token_cache.peek(), Some(&Token::BEGIN));
+        assert_eq!(token_cache.peek(), Some(&Token::BEGIN));
+    }
+
+    #[test]
+    fn peek_ahead() {
+        let mut token_cache = TokenCache::new();
+
+        token_cache.push(Token::BEGIN);
+        token_cache.push(Token::END);
+        token_cache.push(Token::DOT);
+
+        assert_eq!(token_cache.peek_ahead(0), Some(&Token::BEGIN));
+        assert_eq!(token_cache.peek_ahead(1), Some(&Token::END));
+        assert_eq!(token_cache.peek_ahead(2), Some(&Token::DOT));
+        assert_eq!(token_cache.peek_ahead(3), None);
+        assert_eq!(token_cache.peek_ahead(0), Some(&Token::BEGIN));
+    }
+}
