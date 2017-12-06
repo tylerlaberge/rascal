@@ -106,7 +106,7 @@ impl<'a> Parser<'a> {
     /// <pre>
     ///     program :: PROGRAM variable SEMI block DOT
     /// </pre>
-    fn program(&mut self) -> Result<Program, String> {
+    pub fn program(&mut self) -> Result<Program, String> {
         match self.lexer.next() {
             Some(Token::PROGRAM) => Ok(()),
             _                    => Err(String::from("Program Parse Error: Expected token PROGRAM"))
@@ -128,14 +128,14 @@ impl<'a> Parser<'a> {
     /// <pre>
     ///     block :: declarations compound_statement
     /// </pre>
-    fn block(&mut self) -> Result<Block, String> {
+    pub fn block(&mut self) -> Result<Block, String> {
         return Ok(Block::Block(self.declarations()?, self.compound_statement()?));
     }
 
     /// <pre>
     ///     declarations :: VAR (variable_declaration)+ (procedure_declaration | function_declaration)* | (procedure_declaration | function_declaration)* | empty
     /// </pre>
-    fn declarations(&mut self) -> Result<Vec<Declarations>, String> {
+    pub fn declarations(&mut self) -> Result<Vec<Declarations>, String> {
         let mut declarations: Vec<Declarations> = vec![];
 
         if let Some(&Token::VAR) = self.lexer.peek() {
@@ -484,3 +484,305 @@ impl<'a> Parser<'a> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lexer::Source;
+    use parser::ast::UnaryOpExpr;
+    use parser::ast::UnaryOperator;
+    use parser::ast::BinaryOpExpr;
+    use parser::ast::BinaryOperator;
+    use parser::ast::GroupedExpr;
+
+    fn get_parser(text: &str) -> Parser {
+        let source = Source::new(text);
+        let lexer = Lexer::new(source);
+        let parser = Parser::new(lexer);
+
+        return parser;
+    }
+
+    #[test]
+    fn program() {
+        let mut parser = get_parser("program test; begin end.");
+
+        assert_matches!(parser.program(), Ok(Program::Program(_, _)));
+    }
+
+    #[test]
+    fn block() {
+        let mut parser = get_parser("begin end");
+
+        assert_matches!(parser.block(), Ok(Block::Block(_, _)));
+    }
+
+    #[test]
+    fn declarations() {
+        let mut parser = get_parser("var test_var: integer; function test_func(): string; begin end procedure test_proc; begin end");
+        match parser.declarations() {
+            Ok(declarations) => {
+                assert_eq!(declarations.len(), 3);
+                assert_matches!(declarations[0], Declarations::VariableDeclarations(_));
+                assert_matches!(declarations[1], Declarations::ProcedureDeclarations(_));
+                assert_matches!(declarations[2], Declarations::FunctionDeclarations(_));
+            },
+            Err(e)           => panic!(e)
+        };
+    }
+
+    #[test]
+    fn variable_declaration() {
+        let mut parser = get_parser("foo, bar, baz : integer;");
+        match parser.variable_declaration() {
+            Ok(VariableDeclaration::Variables(names, _)) => assert_eq!(names, vec![String::from("foo"), String::from("bar"), String::from("baz")]),
+            Err(e)                                       => panic!(e)
+        }
+    }
+
+    #[test]
+    fn type_spec() {
+        let mut parser = get_parser("integer real string boolean");
+
+        assert_matches!(parser.type_spec(), Ok(TypeSpec::INTEGER));
+        assert_matches!(parser.type_spec(), Ok(TypeSpec::REAL));
+        assert_matches!(parser.type_spec(), Ok(TypeSpec::STRING));
+        assert_matches!(parser.type_spec(), Ok(TypeSpec::BOOLEAN));
+    }
+
+    #[test]
+    fn procedure_declaration() {
+        let mut parser = get_parser("procedure test(); begin end");
+        match parser.procedure_declaration() {
+            Ok(ProcedureDeclaration::Procedure(name, _, _)) => assert_eq!(name, String::from("test")),
+            Err(e)                                          => panic!(e)
+        }
+    }
+
+    #[test]
+    fn function_declaration() {
+        let mut parser = get_parser("function test(): integer; begin end");
+        match parser.function_declaration() {
+            Ok(FunctionDeclaration::Function(name, _, _, _)) => assert_eq!(name, String::from("test")),
+            Err(e)                                           => panic!(e)
+        }
+    }
+
+    #[test]
+    fn formal_parameters_list() {
+        let mut parser = get_parser("a: integer; b: real; c, d: string");
+
+        assert_matches!(parser.formal_parameter_list(), Ok(FormalParameterList::FormalParameters(_)));
+    }
+
+    #[test]
+    fn formal_parameters() {
+        let mut parser = get_parser("a, b, c: integer");
+        match parser.formal_parameters() {
+            Ok(FormalParameters::Parameters(names, _)) => assert_eq!(names, vec![String::from("a"), String::from("b"), String::from("c")]),
+            Err(e)                                     => panic!(e)
+        };
+    }
+
+    #[test]
+    fn compound_statement() {
+        let mut parser = get_parser("begin end");
+
+        assert_matches!(parser.compound_statement(), Ok(Compound::Statements(_)));
+    }
+
+    #[test]
+    fn if_statement() {
+        let mut parser = get_parser("if true then begin end");
+
+        assert_matches!(parser.if_statement(), Ok(IfStatement::If(_, _)));
+    }
+
+    #[test]
+    fn if_else_statement() {
+        let mut parser = get_parser("if false then begin end else begin end");
+
+        assert_matches!(parser.if_statement(), Ok(IfStatement::IfElse(_, _, _)));
+    }
+
+    #[test]
+    fn if_else_if_statement() {
+        let mut parser = get_parser("if false then begin end else if true then begin end else if true then begin end");
+        match parser.if_statement() {
+            Ok(IfStatement::IfElseIf(_, _, else_if_one)) => match *else_if_one {
+                IfStatement::IfElseIf(_, _, else_if_two) => match *else_if_two {
+                    IfStatement::If(_, _) => (),
+                    _                     => panic!("Failure: Expected IfStatement::If AST node")
+                },
+                _                                        => panic!("Failure: Expected IfStatement::IfElseIf AST node")
+            },
+            _                                            => panic!("Failure: Expected IfStatement::IfElseIf AST node")
+        };
+    }
+
+    #[test]
+    fn if_else_if_else_statement() {
+        let mut parser = get_parser("if false then begin end else if false then begin end else begin end");
+        match parser.if_statement() {
+            Ok(IfStatement::IfElseIf(_, _, else_if)) => match *else_if {
+                IfStatement::IfElse(_, _, _) => (),
+                _                            => panic!("Failure: Expected IfStatement::IfElse AST node")
+            },
+            _                                        => panic!("Failure: Expected IfStatement::IfElseIf AST node")
+        };
+    }
+
+    #[test]
+    fn assignment_statement() {
+        let mut parser = get_parser("foo := 5;");
+
+        assert_matches!(parser.assignment_statement(), Ok(Assignment::Assign(_, _)));
+    }
+
+    #[test]
+    fn variable() {
+        let mut parser = get_parser("foo");
+        match parser.variable() {
+            Ok(Variable::Var(name)) => assert_eq!(name, String::from("foo")),
+            Err(e)                  => panic!(e)
+        };
+    }
+
+    #[test]
+    fn function_call() {
+        let mut parser = get_parser("test(foo, bar, 5 + 5);");
+
+        assert_matches!(parser.function_call(), Ok(FunctionCall::Call(_, _)));
+    }
+
+    #[test]
+    fn call_parameters() {
+        let mut parser = get_parser("foo, bar, 5 + 5");
+
+        assert_matches!(parser.call_parameters(), Ok(CallParameters::Parameters(_)));
+    }
+
+    #[test]
+    fn expr_unary_plus() {
+        let mut parser = get_parser("+5");
+        match parser.expr(Some(0)) {
+            Ok(Expr::UnaryOp(unary_expr)) => match *unary_expr {
+                UnaryOpExpr::UnaryOp(UnaryOperator::Plus, _) => (),
+                _                                            => panic!("Failure: Expected unary plus AST node")
+            },
+            _                             => panic!("Failure: Expected unary expression AST node")
+        };
+    }
+
+    #[test]
+    fn expr_unary_minus() {
+        let mut parser = get_parser("-5");
+        match parser.expr(Some(0)) {
+            Ok(Expr::UnaryOp(unary_expr)) => match *unary_expr {
+                UnaryOpExpr::UnaryOp(UnaryOperator::Minus, _) => (),
+                _                                             => panic!("Failure: Expected unary minus AST node")
+            },
+            _                             => panic!("Failure: Expected unary expression AST node")
+        };
+    }
+
+    #[test]
+    fn expr_binary_add() {
+        let mut parser = get_parser("5 + 5");
+        match parser.expr(Some(0)) {
+            Ok(Expr::BinOp(binop_expr)) => match *binop_expr {
+                BinaryOpExpr::BinaryOp(_, BinaryOperator::Plus, _) => (),
+                _                                                  => panic!("Failure: Expected binary addition AST node")
+            },
+            _                           => panic!("Failure: Expected binary expression AST node")
+        };
+    }
+
+    #[test]
+    fn expr_binary_subtract() {
+        let mut parser = get_parser("5 - 5");
+        match parser.expr(Some(0)) {
+            Ok(Expr::BinOp(binop_expr)) => match *binop_expr {
+                BinaryOpExpr::BinaryOp(_, BinaryOperator::Minus, _) => (),
+                _                                                   => panic!("Failure: Expected binary subtraction AST node")
+            },
+            _                           => panic!("Failure: Expected binary expression AST node")
+        };
+    }
+
+    #[test]
+    fn expr_binary_multiply() {
+        let mut parser = get_parser("5 * 5");
+        match parser.expr(Some(0)) {
+            Ok(Expr::BinOp(binop_expr)) => match *binop_expr {
+                BinaryOpExpr::BinaryOp(_, BinaryOperator::Multiply, _) => (),
+                _                                                      => panic!("Failure: Expected binary multiply AST node")
+            },
+            _                           => panic!("Failure: Expected binary expression AST node")
+        };
+    }
+
+    #[test]
+    fn expr_binary_int_divide() {
+        let mut parser = get_parser("5 div 5");
+        match parser.expr(Some(0)) {
+            Ok(Expr::BinOp(binop_expr)) => match *binop_expr {
+                BinaryOpExpr::BinaryOp(_, BinaryOperator::IntegerDivide, _) => (),
+                _                                                           => panic!("Failure: Expected binary integer division AST node")
+            },
+            _                           => panic!("Failure: Expected binary expression AST node")
+        };
+    }
+
+    #[test]
+    fn expr_binary_float_divide() {
+        let mut parser = get_parser("5 / 5");
+        match parser.expr(Some(0)) {
+            Ok(Expr::BinOp(binop_expr)) => match *binop_expr {
+                BinaryOpExpr::BinaryOp(_, BinaryOperator::FloatDivide, _) => (),
+                _                                                         => panic!("Failure: Expected binary float division AST node")
+            },
+            _                           => panic!("Failure: Expected binary expression AST node")
+        };
+    }
+
+    #[test]
+    fn expr_grouped() {
+        let mut parser = get_parser("(5 + 5)");
+        match parser.expr(Some(0)) {
+            Ok(Expr::Group(grouped_expr)) => match *grouped_expr {
+                GroupedExpr::Group(_) => ()
+            },
+            _                             => panic!("Failure: Expected grouped expression AST node")
+        };
+    }
+
+    #[test]
+    fn expr_function_call() {
+        let mut parser = get_parser("test()");
+
+        assert_matches!(parser.expr(Some(0)), Ok(Expr::FunctionCall(_)));
+    }
+
+    #[test]
+    fn expr_literal() {
+        for literal in vec!["5", "5.5", "'test'", "true"] {
+            let mut parser = get_parser(literal);
+
+            assert_matches!(parser.expr(Some(0)), Ok(Expr::Literal(_)));
+        }
+    }
+
+    #[test]
+    fn expr_variable() {
+        let mut parser = get_parser("test");
+
+        assert_matches!(parser.expr(Some(0)), Ok(Expr::Variable(_)));
+    }
+
+    #[test]
+    fn parse() {
+        let mut parser = get_parser("program test; begin end.");
+
+        assert_matches!(parser.parse(), Ok(Program::Program(_, _)));
+    }
+}

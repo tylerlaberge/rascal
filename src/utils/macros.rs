@@ -6,3 +6,12 @@ macro_rules! matches {
         }
     };
 }
+
+macro_rules! assert_matches {
+    ($expression:expr, $($pattern:pat)|*) => {
+        match $expression {
+            $($pattern)|* => (),
+            ref actual    => panic!("\nExpected: {}\nActual: {:?}\n", stringify!($($pattern)|*), actual)
+        }
+    };
+}
