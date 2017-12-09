@@ -62,3 +62,41 @@ impl Debug for SymbolTable {
         write!(f, "\n\tName: {:?}\n\tSymbols: {:?}\n\tEnclosing Scope: {:?}", self.name, self.symbols, enclosing_scope_name)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use analyzer::symbol::VarSymbol;
+
+    #[test]
+    fn lookup() {
+        let mut symbol_table = SymbolTable::new(String::from("test_table"));
+        symbol_table.define(Symbol::Var(VarSymbol::INTEGER(String::from("test"))));
+
+        assert_eq!(
+            symbol_table.lookup(&String::from("test")),
+            Some(&Symbol::Var(VarSymbol::INTEGER(String::from("test"))))
+        );
+    }
+
+    #[test]
+    fn enclosing_lookup() {
+        let mut enclosing_table = SymbolTable::new(String::from("test_enclosing_table"));
+        enclosing_table.define(Symbol::Var(VarSymbol::INTEGER(String::from("test"))));
+        let mut symbol_table = SymbolTable::with_enclosing_scope(String::from("test_table"), enclosing_table);
+
+        assert_eq!(
+            symbol_table.lookup(&String::from("test")),
+            Some(&Symbol::Var(VarSymbol::INTEGER(String::from("test"))))
+        );
+    }
+
+    #[test]
+    fn local_lookup() {
+        let mut enclosing_table = SymbolTable::new(String::from("test_enclosing_table"));
+        enclosing_table.define(Symbol::Var(VarSymbol::INTEGER(String::from("test"))));
+        let mut symbol_table = SymbolTable::with_enclosing_scope(String::from("test_table"), enclosing_table);
+
+        assert_eq!(symbol_table.local_lookup(&String::from("test")), None);
+    }
+}

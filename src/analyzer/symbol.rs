@@ -2,13 +2,13 @@ use std::clone::Clone;
 
 use parser::ast::TypeSpec;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Symbol {
     Var(VarSymbol),
     Callable(CallableSymbol)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum VarSymbol {
     INTEGER(String),
     REAL(String),
@@ -16,7 +16,7 @@ pub enum VarSymbol {
     BOOLEAN(String)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CallableSymbol {
     Procedure(String, Vec<VarSymbol>),
     Function(String, Vec<VarSymbol>, TypeSpec)
