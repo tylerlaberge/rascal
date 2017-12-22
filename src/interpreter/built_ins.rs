@@ -47,3 +47,29 @@ pub fn string_to_real(text: String) -> Result<Object, String> {
         Err(_)  => Err(String::from("Could not convert string to real"))
     };
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Object;
+    use super::Primitive;
+
+    #[test]
+    fn int_to_string() {
+        assert_eq!(super::int_to_string(5), Ok(Object::Primitive(Primitive::String(String::from("5")))));
+    }
+
+    #[test]
+    fn real_to_string() {
+        assert_eq!(super::real_to_string(5.5), Ok(Object::Primitive(Primitive::String(String::from("5.5")))));
+    }
+
+    #[test]
+    fn string_to_int() {
+        assert_eq!(super::string_to_int(String::from("5")), Ok(Object::Primitive(Primitive::Integer(5))));
+    }
+
+    #[test]
+    fn string_to_real() {
+        assert_eq!(super::string_to_real(String::from("5.5")), Ok(Object::Primitive(Primitive::Float(5.5))));
+    }
+}

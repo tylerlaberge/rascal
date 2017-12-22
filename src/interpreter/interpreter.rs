@@ -63,7 +63,7 @@ impl Interpreter {
         return Ok(());
     }
 
-    fn visit_program(&mut self, node: &Program) -> Result<(), String> {
+    pub fn visit_program(&mut self, node: &Program) -> Result<(), String> {
         return match node {
             &Program::Program(ref var, ref block) => {
                 match var {
@@ -81,7 +81,7 @@ impl Interpreter {
         };
     }
 
-    fn visit_block(&mut self, node: &Block) -> Result<Object, String> {
+    pub fn visit_block(&mut self, node: &Block) -> Result<Object, String> {
         return match node {
             &Block::Block(ref declarations, ref compound) => {
                 self.visit_declarations(declarations)?;
@@ -92,7 +92,7 @@ impl Interpreter {
         };
     }
 
-    fn visit_declarations(&mut self, node: &Vec<Declarations>) -> Result<(), String> {
+    pub fn visit_declarations(&mut self, node: &Vec<Declarations>) -> Result<(), String> {
         for declarations in node {
             match declarations {
                 &Declarations::ProcedureDeclarations(ref procedure_declarations) => {
@@ -111,7 +111,7 @@ impl Interpreter {
         return Ok(());
     }
 
-    fn visit_procedure_declaration(&mut self, node: &ProcedureDeclaration) -> Result<(), String> {
+    pub fn visit_procedure_declaration(&mut self, node: &ProcedureDeclaration) -> Result<(), String> {
         return match node {
             &ProcedureDeclaration::Procedure(ref name, ref parameter_list, ref block) => {
                 let parameters = self.visit_formal_parameter_list(parameter_list)?;
@@ -123,7 +123,7 @@ impl Interpreter {
         };
     }
 
-    fn visit_function_declaration(&mut self, node: &FunctionDeclaration) -> Result<(), String> {
+    pub fn visit_function_declaration(&mut self, node: &FunctionDeclaration) -> Result<(), String> {
         return match node {
             &FunctionDeclaration::Function(ref name, ref parameter_list, ref block, ref return_type) => {
                 let parameters = self.visit_formal_parameter_list(parameter_list)?;
@@ -135,7 +135,7 @@ impl Interpreter {
         };
     }
 
-    fn visit_formal_parameter_list(&mut self, node: &FormalParameterList) -> Result<Vec<String>, String> {
+    pub fn visit_formal_parameter_list(&mut self, node: &FormalParameterList) -> Result<Vec<String>, String> {
         return match node {
             &FormalParameterList::FormalParameters(ref formal_parameters) => {
                 let mut var_names: Vec<String> = vec![];
@@ -148,13 +148,13 @@ impl Interpreter {
         };
     }
 
-    fn visit_formal_parameters(&mut self, node: &FormalParameters) -> Result<Vec<String>, String> {
+    pub fn visit_formal_parameters(&mut self, node: &FormalParameters) -> Result<Vec<String>, String> {
         return match node {
             &FormalParameters::Parameters(ref names, _) => Ok(names.to_vec())
         };
     }
 
-    fn visit_compound(&mut self, node: &Compound) -> Result<Object, String> {
+    pub fn visit_compound(&mut self, node: &Compound) -> Result<Object, String> {
         return match node {
             &Compound::Statements(ref statements) => {
                 let mut result = Object::Unit;
@@ -167,7 +167,7 @@ impl Interpreter {
         };
     }
 
-    fn visit_statement(&mut self, node: &Statement) -> Result<Object, String> {
+    pub fn visit_statement(&mut self, node: &Statement) -> Result<Object, String> {
         return match node {
             &Statement::Compound(ref compound)            => self.visit_compound(compound),
             &Statement::Assignment(ref assignment)        => self.visit_assignment(assignment),
@@ -176,7 +176,7 @@ impl Interpreter {
         };
     }
 
-    fn visit_if_statement(&mut self, node: &IfStatement) -> Result<Object, String> {
+    pub fn visit_if_statement(&mut self, node: &IfStatement) -> Result<Object, String> {
         return match node {
             &IfStatement::If(ref expr, ref compound_statement) => match self.visit_expr(expr)? {
                 Object::Primitive(Primitive::Boolean(true)) => {
@@ -208,7 +208,7 @@ impl Interpreter {
         }
     }
 
-    fn visit_assignment(&mut self, node: &Assignment) -> Result<Object, String> {
+    pub fn visit_assignment(&mut self, node: &Assignment) -> Result<Object, String> {
         return match node {
             &Assignment::Assign(Variable::Var(ref name), ref expression) => {
                 let val = self.visit_expr(expression)?;
@@ -219,7 +219,7 @@ impl Interpreter {
         };
     }
 
-    fn visit_function_call(&mut self, node: &FunctionCall) -> Result<Object, String> {
+    pub fn visit_function_call(&mut self, node: &FunctionCall) -> Result<Object, String> {
         return match node {
             &FunctionCall::Call(Variable::Var(ref function_name), CallParameters::Parameters(ref given_parameters)) => {
                 let callable = match self.scope()?.get(function_name) {
@@ -337,7 +337,7 @@ impl Interpreter {
         };
     }
 
-    fn visit_expr(&mut self, node: &Expr) -> Result<Object, String> {
+    pub fn visit_expr(&mut self, node: &Expr) -> Result<Object, String> {
         return match node {
             &Expr::UnaryOp(ref unaryop_expr)       => self.visit_unaryop(unaryop_expr),
             &Expr::BinOp(ref binop_expr)           => self.visit_binop(binop_expr),
@@ -348,7 +348,7 @@ impl Interpreter {
         };
     }
 
-    fn visit_unaryop(&mut self, node: &UnaryOpExpr) -> Result<Object, String> {
+    pub fn visit_unaryop(&mut self, node: &UnaryOpExpr) -> Result<Object, String> {
         return match node {
             &UnaryOpExpr::UnaryOp(UnaryOperator::Plus, ref expr)  => Ok(self.visit_expr(expr)?.unary_plus()?),
             &UnaryOpExpr::UnaryOp(UnaryOperator::Minus, ref expr) => Ok(self.visit_expr(expr)?.unary_minus()?),
@@ -356,7 +356,7 @@ impl Interpreter {
         };
     }
 
-    fn visit_binop(&mut self, node: &BinaryOpExpr) -> Result<Object, String> {
+    pub fn visit_binop(&mut self, node: &BinaryOpExpr) -> Result<Object, String> {
         return match node {
             &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Plus, ref right)               => Ok(self.visit_expr(left)?.add(&self.visit_expr(right)?)?),
             &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Minus, ref right)              => Ok(self.visit_expr(left)?.subtract(&self.visit_expr(right)?)?),
@@ -371,17 +371,16 @@ impl Interpreter {
             &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::GreaterThanOrEqual, ref right) => Ok(self.visit_expr(left)?.greater_than_or_equal(&self.visit_expr(right)?)?),
             &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Equal, ref right)              => Ok(self.visit_expr(left)?.equal(&self.visit_expr(right)?)?),
             &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::NotEqual, ref right)           => Ok(self.visit_expr(left)?.not_equal(&self.visit_expr(right)?)?),
-
         };
     }
 
-    fn visit_group(&mut self, node: &GroupedExpr) -> Result<Object, String> {
+    pub fn visit_group(&mut self, node: &GroupedExpr) -> Result<Object, String> {
         return match node {
             &GroupedExpr::Group(ref expr) => self.visit_expr(expr)
         };
     }
 
-    fn visit_literal(&mut self, node: &Literal) -> Result<Object, String> {
+    pub fn visit_literal(&mut self, node: &Literal) -> Result<Object, String> {
         return match node {
             &Literal::Int(i)        => Ok(Object::Primitive(Primitive::Integer(i))),
             &Literal::Float(f)      => Ok(Object::Primitive(Primitive::Float(f))),
@@ -390,7 +389,7 @@ impl Interpreter {
         };
     }
 
-    fn visit_variable(&mut self, node: &Variable) -> Result<Object, String> {
+    pub fn visit_variable(&mut self, node: &Variable) -> Result<Object, String> {
         return match node {
             &Variable::Var(ref name) => {
                 match self.scope()?.get(name) {
@@ -401,7 +400,7 @@ impl Interpreter {
         };
     }
 
-    fn enter_scope(&mut self, name: String) {
+    pub fn enter_scope(&mut self, name: String) {
         let current_scope = self.scope.take();
         match current_scope {
             Some(scope) => self.scope = Some(Scope::with_enclosing_scope(name, scope)),
@@ -409,7 +408,7 @@ impl Interpreter {
         };
     }
 
-    fn leave_scope(&mut self) {
+    pub fn leave_scope(&mut self) {
         let current_scope = self.scope.take();
 
         match current_scope {
@@ -418,10 +417,296 @@ impl Interpreter {
         };
     }
 
-    fn scope(&mut self) -> Result<&mut Scope, String> {
+    pub fn scope(&mut self) -> Result<&mut Scope, String> {
         return match self.scope {
             Some(ref mut scope) => Ok(scope),
             None                => Err(String::from("Internal Interpreter Error: Unknown Scope"))
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use parser::ast::TypeSpec;
+
+    #[test]
+    fn visit_program() {
+        let mut interpreter = Interpreter::new();
+        let program = Program::Program(
+            Variable::Var(String::from("test")),
+            Block::Block(vec![], Compound::Statements(vec![]))
+        );
+
+        assert_eq!(interpreter.visit_program(&program), Ok(()));
+    }
+
+    #[test]
+    fn visit_block() {
+        let mut interpreter = Interpreter::new();
+        let block = Block::Block(vec![], Compound::Statements(vec![]));
+
+        assert_eq!(interpreter.visit_block(&block), Ok(Object::Unit));
+    }
+
+    #[test]
+    fn visit_declarations() {
+        let mut interpreter = Interpreter::new();
+        let declarations = vec![
+            Declarations::ProcedureDeclarations(vec![]),
+            Declarations::FunctionDeclarations(vec![]),
+            Declarations::VariableDeclarations(vec![])
+        ];
+
+        assert_eq!(interpreter.visit_declarations(&declarations), Ok(()));
+    }
+
+    #[test]
+    fn visit_procedure_declaration() {
+        let mut interpreter = Interpreter::new();
+        interpreter.enter_scope(String::from("test_scope"));
+
+        let procedure = ProcedureDeclaration::Procedure(
+            String::from("test"),
+            FormalParameterList::FormalParameters(vec![]),
+            Block::Block(vec![], Compound::Statements(vec![]))
+        );
+
+        assert_eq!(interpreter.visit_procedure_declaration(&procedure), Ok(()));
+        assert_eq!(
+            interpreter.scope().unwrap().get(&String::from("test")),
+            Some(
+                &Object::Procedure(
+                    String::from("test"),
+                    vec![],
+                    Block::Block(vec![], Compound::Statements(vec![]))
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn visit_function_declaration() {
+        let mut interpreter = Interpreter::new();
+        interpreter.enter_scope(String::from("test_scope"));
+
+        let function = FunctionDeclaration::Function(
+            String::from("test"),
+            FormalParameterList::FormalParameters(vec![]),
+            Block::Block(vec![], Compound::Statements(vec![])),
+            TypeSpec::INTEGER
+        );
+
+        assert_eq!(interpreter.visit_function_declaration(&function), Ok(()));
+        assert_eq!(
+            interpreter.scope().unwrap().get(&String::from("test")),
+            Some(
+                &Object::Function(
+                    String::from("test"),
+                    vec![],
+                    Block::Block(vec![], Compound::Statements(vec![])),
+                    TypeSpec::INTEGER
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn visit_formal_parameter_list() {
+        let mut interpreter = Interpreter::new();
+        let formal_parameter_list = FormalParameterList::FormalParameters(vec![
+            FormalParameters::Parameters(
+                vec![String::from("int_one"), String::from("int_two")], TypeSpec::INTEGER
+            ),
+            FormalParameters::Parameters(
+                vec![String::from("bool_one")], TypeSpec::BOOLEAN
+            ),
+            FormalParameters::Parameters(
+                vec![String::from("real_one"), String::from("real_two"), String::from("real_three")], TypeSpec::REAL
+            )
+        ]);
+
+        assert_eq!(
+            interpreter.visit_formal_parameter_list(&formal_parameter_list),
+            Ok(vec![
+                String::from("int_one"), String::from("int_two"), String::from("bool_one"),
+                String::from("real_one"), String::from("real_two"), String::from("real_three")
+            ])
+        );
+    }
+
+    #[test]
+    fn visit_formal_parameters() {
+        let mut interpreter = Interpreter::new();
+        let formal_parameters = FormalParameters::Parameters(
+            vec![String::from("foo"), String::from("bar")],
+            TypeSpec::INTEGER
+        );
+
+        assert_eq!(
+            interpreter.visit_formal_parameters(&formal_parameters),
+            Ok(vec![String::from("foo"), String::from("bar")])
+        );
+    }
+
+    #[test]
+    fn visit_compound() {
+        let mut interpreter = Interpreter::new();
+        interpreter.enter_scope(String::from("test_scope"));
+
+        let compound = Compound::Statements(vec![
+            Statement::Assignment(Assignment::Assign(Variable::Var(String::from("foo")), Expr::Literal(Literal::Int(5)))),
+            Statement::Assignment(Assignment::Assign(Variable::Var(String::from("bar")), Expr::Literal(Literal::Boolean(true)))),
+        ]);
+
+        assert_eq!(
+            interpreter.visit_compound(&compound),
+            Ok(Object::Primitive(Primitive::Boolean(true)))
+        );
+        assert_eq!(
+            interpreter.scope().unwrap().get(&String::from("foo")),
+            Some(&Object::Primitive(Primitive::Integer(5)))
+        );
+        assert_eq!(
+            interpreter.scope().unwrap().get(&String::from("bar")),
+            Some(&Object::Primitive(Primitive::Boolean(true)))
+        );
+    }
+
+    #[test]
+    fn visit_if_statement() {
+        let mut interpreter = Interpreter::new();
+        let if_statement = IfStatement::IfElseIf(             // if false then
+            Expr::Literal(Literal::Boolean(false)),        //     begin
+            Compound::Statements(vec![]),                  //     end
+            Box::new(                                      // else if true then
+                IfStatement::IfElse(                       //     begin
+                    Expr::Literal(Literal::Boolean(true)), //     end
+                    Compound::Statements(vec![]),          // else
+                    Compound::Statements(vec![]))          //     begin
+            )                                                 //     end
+        );
+
+        assert_eq!(interpreter.visit_if_statement(&if_statement), Ok(Object::Unit));
+    }
+
+    #[test]
+    fn visit_assignment() {
+        let mut interpreter = Interpreter::new();
+        interpreter.enter_scope(String::from("test_scope"));
+
+        let assignment = Assignment::Assign(
+            Variable::Var(String::from("test")),
+            Expr::Literal(Literal::Int(5))
+        );
+
+        assert_eq!(interpreter.visit_assignment(&assignment), Ok(Object::Primitive(Primitive::Integer(5))));
+        assert_eq!(
+            interpreter.scope().unwrap().get(&String::from("test")),
+            Some(&Object::Primitive(Primitive::Integer(5)))
+        )
+    }
+
+    #[test]
+    fn visit_function_call() {
+        let mut interpreter = Interpreter::new();
+        interpreter.enter_scope(String::from("test_scope"));
+        interpreter.scope().unwrap().set(
+            String::from("test_function"),
+            Object::Function(
+                String::from("test_function"),
+                vec![],
+                Block::Block(
+                    vec![],
+                    Compound::Statements(vec![
+                        Statement::Assignment(
+                            Assignment::Assign(
+                                Variable::Var(String::from("foo")),
+                                Expr::Literal(Literal::Int(5))
+                            )
+                        )
+                    ])
+                ),
+                TypeSpec::INTEGER
+            )
+        );
+
+        let function_call = FunctionCall::Call(
+            Variable::Var(String::from("test_function")),
+            CallParameters::Parameters(vec![])
+        );
+
+        assert_eq!(
+            interpreter.visit_function_call(&function_call),
+            Ok(Object::Primitive(Primitive::Integer(5)))
+        )
+    }
+
+    #[test]
+    fn visit_unaryop() {
+        let mut interpreter = Interpreter::new();
+        let unaryop_expr = UnaryOpExpr::UnaryOp(
+            UnaryOperator::Minus,
+            Expr::Literal(Literal::Int(5))
+        );
+
+        assert_eq!(
+            interpreter.visit_unaryop(&unaryop_expr),
+            Ok(Object::Primitive(Primitive::Integer(-5)))
+        );
+    }
+
+    #[test]
+    fn visit_binop() {
+        let mut interpreter = Interpreter::new();
+        let binop_expr = BinaryOpExpr::BinaryOp(
+            Expr::Literal(Literal::Int(5)),
+            BinaryOperator::Multiply,
+            Expr::Literal(Literal::Int(10))
+        );
+
+        assert_eq!(
+            interpreter.visit_binop(&binop_expr),
+            Ok(Object::Primitive(Primitive::Integer(50)))
+        );
+    }
+
+    #[test]
+    fn visit_group() {
+        let mut interpreter = Interpreter::new();
+        let grouped_expr = GroupedExpr::Group(Expr::Literal(Literal::Int(5)));
+
+        assert_eq!(
+            interpreter.visit_group(&grouped_expr),
+            Ok(Object::Primitive(Primitive::Integer(5)))
+        );
+    }
+
+    #[test]
+    fn visit_literal() {
+        let mut interpreter = Interpreter::new();
+        let literal = Literal::Boolean(true);
+
+        assert_eq!(
+            interpreter.visit_literal(&literal),
+            Ok(Object::Primitive(Primitive::Boolean(true)))
+        );
+    }
+
+    #[test]
+    fn visit_variable() {
+        let mut interpreter = Interpreter::new();
+        interpreter.enter_scope(String::from("test_scope"));
+        interpreter.scope().unwrap().set(
+            String::from("test_var"),
+            Object::Primitive(Primitive::Float(5.5))
+        );
+
+        let variable = Variable::Var(String::from("test_var"));
+
+        assert_eq!(
+            interpreter.visit_variable(&variable),
+            Ok(Object::Primitive(Primitive::Float(5.5)))
+        );
     }
 }

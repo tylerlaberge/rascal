@@ -56,3 +56,36 @@ impl Debug for Scope {
         write!(f, "\n\tName: {:?}\n\tVariables: {:?}\n\tEnclosing Scope: {:?}", self.name, self.variables, enclosing_scope_name)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use interpreter::object::Primitive;
+
+    #[test]
+    fn get() {
+        let mut scope = Scope::new(String::from("test_scope"));
+        scope.set(String::from("test_var"), Object::Primitive(Primitive::Integer(5)));
+
+        assert_eq!(scope.get(&String::from("test_var")), Some(&Object::Primitive(Primitive::Integer(5))));
+    }
+
+    #[test]
+    fn get_enclosing_scope() {
+        let mut enclosing_scope = Scope::new(String::from("test_enclosing_scope"));
+        enclosing_scope.set(String::from("test_var"), Object::Primitive(Primitive::Integer(5)));
+        let mut scope = Scope::with_enclosing_scope(String::from("test_scope"), enclosing_scope);
+
+        assert_eq!(scope.get(&String::from("test_var")), Some(&Object::Primitive(Primitive::Integer(5))));
+    }
+
+    #[test]
+    fn get_local_scope() {
+        let mut enclosing_scope = Scope::new(String::from("test_enclosing_scope"));
+        enclosing_scope.set(String::from("test_var"), Object::Primitive(Primitive::Integer(10)));
+        let mut scope = Scope::with_enclosing_scope(String::from("test_scope"), enclosing_scope);
+        scope.set(String::from("test_var"), Object::Primitive(Primitive::Integer(5)));
+
+        assert_eq!(scope.get(&String::from("test_var")), Some(&Object::Primitive(Primitive::Integer(5))));
+    }
+}
