@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-use std::fmt::Debug;
 use std::fmt;
-
+use std::fmt::Debug;
+use std::collections::HashMap;
 use super::object::Object;
 
 pub struct Scope {

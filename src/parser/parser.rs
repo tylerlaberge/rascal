@@ -1,25 +1,25 @@
-use lexer::Lexer;
-use lexer::Token;
+use lexer::{Lexer, Token};
 use super::precedence::Precedence;
-use super::parselet::PrefixParselet;
-use super::parselet::InfixParselet;
-use super::ast::Program;
-use super::ast::Block;
-use super::ast::Declarations;
-use super::ast::ProcedureDeclaration;
-use super::ast::FunctionDeclaration;
-use super::ast::FormalParameterList;
-use super::ast::FormalParameters;
-use super::ast::VariableDeclaration;
-use super::ast::TypeSpec;
-use super::ast::Compound;
-use super::ast::Statement;
-use super::ast::IfStatement;
-use super::ast::Assignment;
-use super::ast::Variable;
-use super::ast::FunctionCall;
-use super::ast::CallParameters;
-use super::ast::Expr;
+use super::parselet::{PrefixParselet, InfixParselet};
+use super::ast::{
+    Program,
+    Block,
+    Declarations,
+    ProcedureDeclaration,
+    FunctionDeclaration,
+    FormalParameterList,
+    FormalParameters,
+    VariableDeclaration,
+    TypeSpec,
+    Compound,
+    Statement,
+    IfStatement,
+    Assignment,
+    Variable,
+    FunctionCall,
+    CallParameters,
+    Expr
+};
 
 /// <pre>
 ///     program               :: PROGRAM variable SEMI block DOT
@@ -312,7 +312,7 @@ impl<'a> Parser<'a> {
                 ids.push(name);
                 Ok(())
             },
-            token                     => Err(String::from(format!("Formal Parameters Parse Error: Expected id token, got token {:?}", token)))
+            token                 => Err(String::from(format!("Formal Parameters Parse Error: Expected id token, got token {:?}", token)))
         }?;
 
         while let Some(&Token::COMMA) = self.lexer.peek() {
@@ -451,20 +451,15 @@ impl<'a> Parser<'a> {
 
     pub fn expr(&mut self, precedence: Option<u32>) -> Result<Expr, String> {
         let precedence = precedence.unwrap_or(0);
-        let token = match self.lexer.next() {
-            Some(t) => Ok(t),
-            None    => Err(String::from("Expression Parse Error: Expected a token, found none"))
-        }?;
+        let token = self.lexer.next().ok_or(String::from("Expression Parse Error: Expected a token, found none"))?;
         let parselet = Parser::get_prefix_parselet(&token)?;
 
         let mut left = parselet.parse(self, &token)?;
 
         while precedence < self.get_next_precedence() {
-            let token = match self.lexer.next() {
-                Some(t) => Ok(t),
-                None    => Err(String::from("Expression Parse Error: Expected a token, found none"))
-            }?;
+            let token = self.lexer.next().ok_or(String::from("Expression Parse Error: Expected a token, found none"))?;
             let parselet = Parser::get_infix_parselet(&token)?;
+
             left = parselet.parse(self, &left, &token)?;
         }
 

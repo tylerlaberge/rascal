@@ -1,8 +1,5 @@
-use super::symbol::Symbol;
-use super::symbol::VarSymbol;
-use super::symbol::CallableSymbol;
-
 use parser::ast::TypeSpec;
+use super::symbol::{Symbol, VarSymbol, CallableSymbol};
 
 pub fn write_procedure() -> Symbol {
     return Symbol::Callable(CallableSymbol::Procedure(String::from("write"), vec![VarSymbol::STRING(String::from("text"))]));
@@ -12,7 +9,7 @@ pub fn writeln_procedure() -> Symbol {
     return Symbol::Callable(CallableSymbol::Procedure(String::from("writeln"), vec![VarSymbol::STRING(String::from("text"))]));
 }
 
-pub fn readln_procedure() -> Symbol {
+pub fn readln_function() -> Symbol {
     return Symbol::Callable(CallableSymbol::Function(String::from("readln"), vec![], TypeSpec::STRING));
 }
 

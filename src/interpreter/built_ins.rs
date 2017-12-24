@@ -1,13 +1,11 @@
 use std::io;
 use std::io::Write;
 use std::error::Error;
-
-use super::object::Object;
-use super::object::Primitive;
+use super::object::{Object, Primitive};
 
 pub fn write(text: String) -> Result<Object, String> {
     print!("{}", text);
-    io::stdout().flush().ok().expect("Could not flush stdout");
+    io::stdout().flush().expect("Could not flush stdout");
 
     return Ok(Object::Unit);
 }

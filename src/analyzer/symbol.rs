@@ -1,5 +1,4 @@
 use std::clone::Clone;
-
 use parser::ast::TypeSpec;
 
 #[derive(Debug, Clone, PartialEq)]

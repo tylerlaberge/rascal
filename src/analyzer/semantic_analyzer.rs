@@ -1,36 +1,33 @@
-use parser::ast::Program;
-use parser::ast::Block;
-use parser::ast::Declarations;
-use parser::ast::ProcedureDeclaration;
-use parser::ast::FormalParameterList;
-use parser::ast::FormalParameters;
-use parser::ast::VariableDeclaration;
-use parser::ast::FunctionDeclaration;
-use parser::ast::Compound;
-use parser::ast::Statement;
-use parser::ast::IfStatement;
-use parser::ast::TypeSpec;
-use parser::ast::FunctionCall;
-use parser::ast::CallParameters;
-use parser::ast::Expr;
-use parser::ast::BinaryOpExpr;
-use parser::ast::BinaryOperator;
-use parser::ast::UnaryOpExpr;
-use parser::ast::UnaryOperator;
-use parser::ast::GroupedExpr;
-use parser::ast::Literal;
-use parser::ast::Assignment;
-use parser::ast::Variable;
-
-use super::symbol_table::SymbolTable;
-use super::symbol::Symbol;
-use super::symbol::VarSymbol;
-use super::symbol::CallableSymbol;
-use super::built_ins;
-
-use std::fmt::Display;
-use std::fmt::Formatter;
 use std::fmt;
+use std::fmt::{Formatter, Display};
+use parser::ast::{
+    Program,
+    Block,
+    Declarations,
+    ProcedureDeclaration,
+    FunctionDeclaration,
+    FormalParameterList,
+    FormalParameters,
+    VariableDeclaration,
+    TypeSpec,
+    Compound,
+    Statement,
+    IfStatement,
+    Assignment,
+    Variable,
+    FunctionCall,
+    CallParameters,
+    Expr,
+    BinaryOpExpr,
+    BinaryOperator,
+    UnaryOpExpr,
+    UnaryOperator,
+    GroupedExpr,
+    Literal
+};
+use super::symbol::{Symbol, VarSymbol, CallableSymbol};
+use super::symbol_table::SymbolTable;
+use super::built_ins;
 
 pub struct SemanticAnalyzer {
     scope: Option<SymbolTable>
@@ -49,16 +46,13 @@ impl SemanticAnalyzer {
     }
 
     pub fn analyze(&mut self, program: &Program) {
-        match self.visit_program(program) {
-            Ok(()) => (),
-            Err(e) => panic!("{}", e)
-        }
+        self.visit_program(program).unwrap();
     }
 
     fn init_built_ins(&mut self) -> Result<(), String> {
         self.scope()?.define(built_ins::write_procedure());
         self.scope()?.define(built_ins::writeln_procedure());
-        self.scope()?.define(built_ins::readln_procedure());
+        self.scope()?.define(built_ins::readln_function());
         self.scope()?.define(built_ins::int_to_string_function());
         self.scope()?.define(built_ins::real_to_string_function());
         self.scope()?.define(built_ins::string_to_int_function());
@@ -104,7 +98,7 @@ impl SemanticAnalyzer {
                         self.visit_procedure_declaration(procedure_declaration)?;
                     }
                 },
-                &Declarations::FunctionDeclarations(ref function_declarations) => {
+                &Declarations::FunctionDeclarations(ref function_declarations)   => {
                     for function_declaration in function_declarations {
                         self.visit_function_declaration(function_declaration)?;
                     }
@@ -117,6 +111,7 @@ impl SemanticAnalyzer {
                 &Declarations::Empty                                             => ()
             };
         }
+
         return Ok(());
     }
 
@@ -183,87 +178,40 @@ impl SemanticAnalyzer {
     }
 
     pub fn visit_formal_parameters(&mut self, node: &FormalParameters) -> Result<Vec<VarSymbol>, String> {
-        return match node {
+        let mut vars: Vec<VarSymbol> = vec![];
+
+        match node {
             &FormalParameters::Parameters(ref names, ref type_spec) => match type_spec {
-                &TypeSpec::INTEGER => {
-                    let mut vars: Vec<VarSymbol> = vec![];
-                    for name in names {
-                        vars.push(VarSymbol::INTEGER(name.to_owned()));
-                    }
-                    Ok(vars.to_vec())
-                },
-                &TypeSpec::REAL    => {
-                    let mut vars: Vec<VarSymbol> = vec![];
-                    for name in names {
-                        vars.push(VarSymbol::REAL(name.to_owned()));
-                    }
-                    Ok(vars.to_vec())
-                },
-                &TypeSpec::STRING  => {
-                    let mut vars: Vec<VarSymbol> = vec![];
-                    for name in names {
-                        vars.push(VarSymbol::STRING(name.to_owned()));
-                    }
-                    Ok(vars.to_vec())
-                },
-                &TypeSpec::BOOLEAN  => {
-                    let mut vars: Vec<VarSymbol> = vec![];
-                    for name in names {
-                        vars.push(VarSymbol::BOOLEAN(name.to_owned()));
-                    }
-                    Ok(vars.to_vec())
-                },
-                &TypeSpec::UNIT     => Err(String::from("Internal Semantic Analyzer Error: Formal Parameter of type Unit"))
+                &TypeSpec::INTEGER => Ok(names.iter().for_each(|name| vars.push(VarSymbol::INTEGER(name.to_owned())))),
+                &TypeSpec::REAL    => Ok(names.iter().for_each(|name| vars.push(VarSymbol::REAL(name.to_owned())))),
+                &TypeSpec::STRING  => Ok(names.iter().for_each(|name| vars.push(VarSymbol::STRING(name.to_owned())))),
+                &TypeSpec::BOOLEAN => Ok(names.iter().for_each(|name| vars.push(VarSymbol::BOOLEAN(name.to_owned())))),
+                &TypeSpec::UNIT    => Err(String::from("Internal Semantic Analyzer Error: Formal Parameter of type Unit"))
             }
-        };
+        }?;
+
+        return Ok(vars.to_vec());
     }
 
     pub fn visit_variable_declaration(&mut self, node: &VariableDeclaration) -> Result<(), String> {
-        match node {
-            &VariableDeclaration::Variables(ref names, TypeSpec::REAL) => {
+        return match node {
+            &VariableDeclaration::Variables(ref names, ref typespec) => {
                 for name in names {
                     match self.scope()?.local_lookup(name) {
-                        None    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::REAL(name.to_owned())))),
-                        Some(_) => Err(String::from(format!("Semantic Analyzer Error: Variable declared more than once: {}", name)))
+                        Some(_) => Err(String::from(format!("Semantic Analyzer Error: Variable declared more than once: {}", name))),
+                        None    => match typespec {
+                            &TypeSpec::INTEGER => Ok(self.scope()?.define(Symbol::Var(VarSymbol::INTEGER(name.to_owned())))),
+                            &TypeSpec::REAL    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::REAL(name.to_owned())))),
+                            &TypeSpec::STRING  => Ok(self.scope()?.define(Symbol::Var(VarSymbol::STRING(name.to_owned())))),
+                            &TypeSpec::BOOLEAN => Ok(self.scope()?.define(Symbol::Var(VarSymbol::BOOLEAN(name.to_owned())))),
+                            &TypeSpec::UNIT    => Err(String::from("Internal Semantic Analyzer Error: Variable Declaration of type Unit"))
+                        }
                     }?;
                 }
 
                 Ok(())
-            },
-            &VariableDeclaration::Variables(ref names, TypeSpec::INTEGER) => {
-                for name in names {
-                    match self.scope()?.local_lookup(name) {
-                        None    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::INTEGER(name.to_owned())))),
-                        Some(_) => Err(String::from(format!("Semantic Analyzer Error: Variable declared more than once: {}", name)))
-                    }?;
-                }
-
-                Ok(())
-            },
-            &VariableDeclaration::Variables(ref names, TypeSpec::STRING) => {
-                for name in names {
-                    match self.scope()?.local_lookup(name) {
-                        None    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::STRING(name.to_owned())))),
-                        Some(_) => Err(String::from(format!("Semantic Analyzer Error: Variable declared more than once: {}", name)))
-                    }?;
-                }
-
-                Ok(())
-            },
-            &VariableDeclaration::Variables(ref names, TypeSpec::BOOLEAN) => {
-                for name in names {
-                    match self.scope()?.local_lookup(name) {
-                        None    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::BOOLEAN(name.to_owned())))),
-                        Some(_) => Err(String::from(format!("Variable declared more than once: {}", name)))
-                    }?;
-                }
-
-                Ok(())
-            },
-            &VariableDeclaration::Variables(_, TypeSpec::UNIT)            => Err(String::from("Internal Semantic Analyzer Error: Variable Declaration of type Unit"))
-        }?;
-
-        return Ok(());
+            }
+        };
     }
 
     pub fn visit_compound(&mut self, node: &Compound) -> Result<TypeSpec, String> {
@@ -281,10 +229,10 @@ impl SemanticAnalyzer {
 
     pub fn visit_statement(&mut self, node: &Statement) -> Result<TypeSpec, String> {
         return match node {
-            &Statement::Compound(ref compound)            => self.visit_compound(compound),
-            &Statement::Assignment(ref assignment)        => self.visit_assignment(assignment),
-            &Statement::IfStatement(ref if_statement)     => self.visit_if_statement(if_statement),
-            &Statement::FunctionCall(ref function_call)   => self.visit_function_call(function_call),
+            &Statement::Compound(ref compound)          => self.visit_compound(compound),
+            &Statement::Assignment(ref assignment)      => self.visit_assignment(assignment),
+            &Statement::IfStatement(ref if_statement)   => self.visit_if_statement(if_statement),
+            &Statement::FunctionCall(ref function_call) => self.visit_function_call(function_call),
         };
     }
 
@@ -351,7 +299,7 @@ impl SemanticAnalyzer {
                     _                                       => Err(String::from(format!("Semantic Analyzer Error: Unknown callable '{:?}'", name)))
                 }?;
                 let declared_params = match callable {
-                    CallableSymbol::Procedure(_, ref declared_params)  => declared_params.to_vec(),
+                    CallableSymbol::Procedure(_, ref declared_params)   => declared_params.to_vec(),
                     CallableSymbol::Function(_, ref declared_params, _) => declared_params.to_vec()
                 };
                 let given_params = self.visit_call_parameters(parameters)?;

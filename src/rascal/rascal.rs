@@ -1,5 +1,4 @@
-use lexer::Source;
-use lexer::Lexer;
+use lexer::{Source, Lexer};
 use parser::Parser;
 use analyzer::SemanticAnalyzer;
 use interpreter::Interpreter;

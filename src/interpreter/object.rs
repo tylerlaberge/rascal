@@ -1,8 +1,6 @@
-use parser::ast::Block;
-use parser::ast::TypeSpec;
-
-use std::fmt::Debug;
 use std::fmt;
+use std::fmt::Debug;
+use parser::ast::{Block, TypeSpec};
 
 #[derive(Clone, PartialEq)]
 pub enum Object {

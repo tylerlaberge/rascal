@@ -1,33 +1,30 @@
-use parser::ast::Program;
-use parser::ast::Block;
-use parser::ast::Declarations;
-use parser::ast::ProcedureDeclaration;
-use parser::ast::FunctionDeclaration;
-use parser::ast::FormalParameterList;
-use parser::ast::FormalParameters;
-use parser::ast::Compound;
-use parser::ast::Statement;
-use parser::ast::IfStatement;
-use parser::ast::FunctionCall;
-use parser::ast::CallParameters;
-use parser::ast::Expr;
-use parser::ast::UnaryOpExpr;
-use parser::ast::BinaryOpExpr;
-use parser::ast::GroupedExpr;
-use parser::ast::Literal;
-use parser::ast::Assignment;
-use parser::ast::Variable;
-use parser::ast::BinaryOperator;
-use parser::ast::UnaryOperator;
-
-use std::fmt::Display;
-use std::fmt::Formatter;
 use std::fmt;
-
+use std::fmt::{Display, Formatter};
+use parser::ast::{
+    Program,
+    Block,
+    Declarations,
+    ProcedureDeclaration,
+    FunctionDeclaration,
+    FormalParameterList,
+    FormalParameters,
+    Compound,
+    Statement,
+    IfStatement,
+    Assignment,
+    Variable,
+    FunctionCall,
+    CallParameters,
+    Expr,
+    BinaryOpExpr,
+    BinaryOperator,
+    UnaryOpExpr,
+    UnaryOperator,
+    GroupedExpr,
+    Literal
+};
+use super::object::{Object, Primitive, BuiltInFunction};
 use super::scope::Scope;
-use super::object::Object;
-use super::object::Primitive;
-use super::object::BuiltInFunction;
 use super::built_ins;
 
 pub struct Interpreter {
@@ -48,7 +45,7 @@ impl Interpreter {
     }
 
     pub fn interpret(&mut self, program: &Program) {
-        self.visit_program(program).expect("Rascal Interpreter Error");
+        self.visit_program(program).unwrap();
     }
 
     fn init_built_ins(&mut self) -> Result<(), String> {
@@ -100,7 +97,7 @@ impl Interpreter {
                         self.visit_procedure_declaration(procedure_declaration)?;
                     }
                 },
-                &Declarations::FunctionDeclarations(ref function_declarations) => {
+                &Declarations::FunctionDeclarations(ref function_declarations)   => {
                     for function_declaration in function_declarations {
                         self.visit_function_declaration(function_declaration)?;
                     }
@@ -169,10 +166,10 @@ impl Interpreter {
 
     pub fn visit_statement(&mut self, node: &Statement) -> Result<Object, String> {
         return match node {
-            &Statement::Compound(ref compound)            => self.visit_compound(compound),
-            &Statement::Assignment(ref assignment)        => self.visit_assignment(assignment),
-            &Statement::IfStatement(ref if_statement)     => self.visit_if_statement(if_statement),
-            &Statement::FunctionCall(ref function_call)   => self.visit_function_call(function_call),
+            &Statement::Compound(ref compound)          => self.visit_compound(compound),
+            &Statement::Assignment(ref assignment)      => self.visit_assignment(assignment),
+            &Statement::IfStatement(ref if_statement)   => self.visit_if_statement(if_statement),
+            &Statement::FunctionCall(ref function_call) => self.visit_function_call(function_call),
         };
     }
 
@@ -230,8 +227,9 @@ impl Interpreter {
                 }?;
 
                 match callable {
-                    Object::Function(function_name, declared_params, block, _) => {
-                        self.enter_scope(function_name);
+                    Object::Procedure(name, declared_params, block)
+                    | Object::Function(name, declared_params, block, _) => {
+                        self.enter_scope(name);
 
                         for (declared, given) in declared_params.iter().zip(given_parameters.iter()) {
                             let given_parameter = self.visit_expr(given)?;
@@ -243,92 +241,31 @@ impl Interpreter {
 
                         Ok(result)
                     },
-                    Object::Procedure(procedure_name, declared_params, block) => {
-                        self.enter_scope(procedure_name);
-
-                        for (declared, given) in declared_params.iter().zip(given_parameters.iter()) {
-                            let given_parameter = self.visit_expr(given)?;
-                            self.scope()?.set(declared.to_owned(), given_parameter);
-                        }
-
-                        self.visit_block(&block)?;
-                        self.leave_scope();
-
-                        Ok(Object::Unit)
-                    },
                     Object::BuiltInFunction(built_in_function) => match built_in_function {
-                        BuiltInFunction::Write(func) => {
-                            if given_parameters.len() != 1 {
-                                Err(String::from("Internal Interpreter Error: Built in function 'write' expected 1 parameter"))
-                            } else {
-                                let parameter = self.visit_expr(&given_parameters[0])?;
-                                match parameter {
-                                    Object::Primitive(Primitive::String(text)) => Ok(func(text)?),
-                                    _                                          => Err(String::from("Internal Interpreter Error: Built in function 'write' expected String parameter"))
-                                }
-                            }
+                        BuiltInFunction::Write(func)        => match self.visit_expr(&given_parameters[0])? {
+                            Object::Primitive(Primitive::String(text)) => Ok(func(text)?),
+                            _                                          => Err(String::from("Internal Interpreter Error: Built in function 'write' expected String parameter"))
                         },
-                        BuiltInFunction::WriteLn(func) => {
-                            if given_parameters.len() != 1 {
-                                Err(String::from("Internal Interpreter Error: Built in function 'writeln' expected 1 parameter"))
-                            } else {
-                                let parameter = self.visit_expr(&given_parameters[0])?;
-                                match parameter {
-                                    Object::Primitive(Primitive::String(text)) => Ok(func(text)?),
-                                    _                                          => Err(String::from("Internal Interpreter Error: Built in function 'writeln' expected String parameter"))
-                                }
-                            }
+                        BuiltInFunction::WriteLn(func)      => match self.visit_expr(&given_parameters[0])? {
+                            Object::Primitive(Primitive::String(text)) => Ok(func(text)?),
+                            _                                          => Err(String::from("Internal Interpreter Error: Built in function 'writeln' expected String parameter"))
                         },
-                        BuiltInFunction::ReadLn(func) => {
-                            if given_parameters.len() != 0 {
-                                Err(String::from("Internal Interpreter Error: Built in function 'readln' expected 0 parameters"))
-                            } else {
-                                Ok(func()?)
-                            }
+                        BuiltInFunction::ReadLn(func)       => Ok(func()?),
+                        BuiltInFunction::IntToString(func)  => match self.visit_expr(&given_parameters[0])? {
+                            Object::Primitive(Primitive::Integer(value)) => Ok(func(value)?),
+                            _                                            => Err(String::from("Internal Interpreter Error: Built in function 'IntToString' expected Integer parameter"))
                         },
-                        BuiltInFunction::IntToString(func) => {
-                            if given_parameters.len() != 1 {
-                                Err(String::from("Internal Interpreter Error: Built in function 'IntToString' expected 1 parameter"))
-                            } else {
-                                let parameter = self.visit_expr(&given_parameters[0])?;
-                                match parameter {
-                                    Object::Primitive(Primitive::Integer(value)) => Ok(func(value)?),
-                                    _                                            => Err(String::from("Internal Interpreter Error: Built in function 'IntToString' expected Integer parameter"))
-                                }
-                            }
+                        BuiltInFunction::RealToString(func) => match self.visit_expr(&given_parameters[0])? {
+                            Object::Primitive(Primitive::Float(value)) => Ok(func(value)?),
+                            _                                          => Err(String::from("Internal Interpreter Error: Built in function 'RealToString' expected Real parameter"))
                         },
-                        BuiltInFunction::RealToString(func) => {
-                            if given_parameters.len() != 1 {
-                                Err(String::from("Internal Interpreter Error: Built in function 'RealToString' expected 1 parameter"))
-                            } else {
-                                let parameter = self.visit_expr(&given_parameters[0])?;
-                                match parameter {
-                                    Object::Primitive(Primitive::Float(value)) => Ok(func(value)?),
-                                    _                                          => Err(String::from("Internal Interpreter Error: Built in function 'RealToString' expected Real parameter"))
-                                }
-                            }
+                        BuiltInFunction::StringToInt(func)  => match self.visit_expr(&given_parameters[0])? {
+                            Object::Primitive(Primitive::String(text)) => Ok(func(text)?),
+                            _                                          => Err(String::from("Internal Interpreter Error: Built in function 'StringToInt' expected String parameter"))
                         },
-                        BuiltInFunction::StringToInt(func) => {
-                            if given_parameters.len() != 1 {
-                                Err(String::from("Internal Interpreter Error: Built in function 'StringToInt' expected 1 parameter"))
-                            } else {
-                                let parameter = self.visit_expr(&given_parameters[0])?;
-                                match parameter {
-                                    Object::Primitive(Primitive::String(text)) => Ok(func(text)?),
-                                    _                                          => Err(String::from("Internal Interpreter Error: Built in function 'StringToInt' expected String parameter"))
-                                }
-                            }
-                        },
-                        BuiltInFunction::StringToReal(func) => {
-                            if given_parameters.len() != 1 {
-                                Err(String::from("Internal Interpreter Error: Built in function 'StringToReal' expected 1 parameter"))
-                            } else {
-                                let parameter = self.visit_expr(&given_parameters[0])?;
-                                match parameter {
-                                    Object::Primitive(Primitive::String(text)) => Ok(func(text)?),
-                                    _                                          => Err(String::from("Internal Interpreter Error: Built in function 'StringToReal' expected String parameter"))
-                                }
-                            }
+                        BuiltInFunction::StringToReal(func) => match self.visit_expr(&given_parameters[0])? {
+                            Object::Primitive(Primitive::String(text)) => Ok(func(text)?),
+                            _                                          => Err(String::from("Internal Interpreter Error: Built in function 'StringToReal' expected String parameter"))
                         }
                     },
                     _                                          => Err(String::from(format!("Internal Interpreter Error: Expected {:?} to be a callable", callable)))

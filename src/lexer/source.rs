@@ -1,7 +1,5 @@
 use std::str::Chars;
-use std::iter::Iterator;
-use std::iter::Peekable;
-
+use std::iter::{Iterator, Peekable};
 use itertools::PeekingNext;
 
 pub struct Source<'a> {

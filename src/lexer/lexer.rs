@@ -1,8 +1,6 @@
-use super::source::Source;
-use super::token::Token;
-use super::token::TokenCache;
-
 use itertools::Itertools;
+use super::source::Source;
+use super::token::{Token, TokenCache};
 
 pub struct Lexer<'a> {
     source: Source<'a>,
@@ -77,9 +75,7 @@ impl<'a> Lexer<'a> {
             let real = string_real.parse::<f32>().or(Err("Internal Lexer Error: Failed to parse float"))?;
 
             return Ok(Token::REAL_CONST(real));
-        }
-
-        else {
+        } else {
             return Ok(Token::INTEGER_CONST(integer));
         }
     }
