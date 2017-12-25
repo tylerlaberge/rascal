@@ -1,3 +1,6 @@
+use std::io;
+use std::io::Write;
+use std::process;
 use itertools::Itertools;
 use super::source::Source;
 use super::token::{Token, TokenCache};
@@ -33,7 +36,10 @@ impl<'a> Lexer<'a> {
                     break;
                 }
                 Ok(token)      => self.token_cache.push(token),
-                Err(e)         => panic!(e)
+                Err(error)     => {
+                    writeln!(io::stderr(), "{}", error).unwrap();
+                    process::exit(1);
+                }
             }
         }
     }
@@ -41,7 +47,7 @@ impl<'a> Lexer<'a> {
     fn number(&mut self) -> Result<i32, String> {
         let start_int: String = match self.source.current_char() {
             Some(c) if c.is_digit(10) => Ok(c),
-            _                         => Err("Internal Lexer Error, expected number")
+            _                         => Err("Internal Lexer Error: Expected number")
         }?.to_string();
 
         let final_int = self.source.by_ref()
@@ -51,7 +57,7 @@ impl<'a> Lexer<'a> {
                 return acc;
             })
             .parse::<i32>()
-            .or(Err("Internal Lexer Error, failed to parse integer"))?;
+            .or(Err("Internal Lexer Error: Failed to parse integer"))?;
 
         return Ok(final_int);
     }
@@ -64,8 +70,8 @@ impl<'a> Lexer<'a> {
 
             let decimal = match self.source.next() {
                 Some(c) if c.is_digit(10) => self.number(),
-                Some(c)                   => Err(String::from(format!("Lexing Error: Expected floating point number at: {}.{}", integer, c))),
-                None                      => Err(String::from(format!("Lexing Error: Expected floating point number at: {}.", integer)))
+                Some(c)                   => Err(String::from(format!("Lexer Error: Expected floating point number at: {}.{}", integer, c))),
+                None                      => Err(String::from(format!("Lexer Error: Expected floating point number at: {}.", integer)))
             }?;
 
             let mut string_real: String = integer.to_string();
@@ -83,7 +89,7 @@ impl<'a> Lexer<'a> {
     fn id(&mut self) -> Result<Token, String> {
         let start_id: String = match self.source.current_char() {
             Some(c) if c.is_alphabetic() => Ok(c),
-            _                            => Err("Internal Lexer Error, expected alphabetic character")
+            _                            => Err("Internal Lexer Error: Expected alphabetic character")
         }?.to_string();
         let final_id: String = self.source.by_ref()
             .peeking_take_while(| c: &char | c.is_alphanumeric() || c == &'_')
@@ -119,7 +125,7 @@ impl<'a> Lexer<'a> {
     fn string(&mut self) -> Result<Token, String> {
         match self.source.current_char() {
             Some('\'') => Ok(()),
-            _          => Err("Internal Lexer Error, expected '\'' character")
+            _          => Err("Internal Lexer Error: Expected '\'' character")
         }?;
 
         let final_string: String = self.source.by_ref()
@@ -131,7 +137,7 @@ impl<'a> Lexer<'a> {
 
         match self.source.next() {
             Some('\'') => Ok(()),
-            _          => Err("Internal Lexer Error, expected '\'' character")
+            _          => Err("Internal Lexer Error: Expected '\'' character")
         }?;
 
         return Ok(Token::STRING_LITERAL(final_string));
@@ -140,7 +146,7 @@ impl<'a> Lexer<'a> {
     fn assign(&mut self) -> Result<Token, String> {
         return match (self.source.current_char(), self.source.next()) {
             (Some(':'), Some('=')) => Ok(Token::ASSIGN),
-            _                      => Err(String::from("Internal Lexer Error: expected ':=' characters"))
+            _                      => Err(String::from("Internal Lexer Error: Expected ':=' characters"))
         };
     }
 
@@ -165,7 +171,7 @@ impl<'a> Lexer<'a> {
                 _          => Ok(Token::GREATER_THAN)
             },
             Some('=') => Ok(Token::EQUAL),
-            _         => Err(String::from("Internal Lexer Error: expected comparison character"))
+            _         => Err(String::from("Internal Lexer Error: Expected comparison character"))
         };
     }
 
@@ -192,7 +198,7 @@ impl<'a> Lexer<'a> {
             Some('(')                                    => Ok(Token::LPAREN),
             Some(')')                                    => Ok(Token::RPAREN),
             None                                         => Ok(Token::EOF),
-            Some(character)                              => Err(format!("Unknown Token: '{}'", character)),
+            Some(character)                              => Err(format!("Lexer Error: Unknown Token '{}'", character)),
         }
     }
 }

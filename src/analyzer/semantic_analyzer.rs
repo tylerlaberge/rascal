@@ -1,5 +1,8 @@
 use std::fmt;
 use std::fmt::{Formatter, Display};
+use std::io;
+use std::io::Write;
+use std::process;
 use parser::ast::{
     Program,
     Block,
@@ -46,7 +49,10 @@ impl SemanticAnalyzer {
     }
 
     pub fn analyze(&mut self, program: &Program) {
-        self.visit_program(program).unwrap();
+        if let Err(error) = self.visit_program(program) {
+            writeln!(io::stderr(), "{}", error).unwrap();
+            process::exit(1);
+        }
     }
 
     fn init_built_ins(&mut self) -> Result<(), String> {
