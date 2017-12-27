@@ -55,7 +55,7 @@ impl PrefixParselet {
     fn grouping(&self, parser: &mut Parser, token: &Token) -> Result<GroupedExpr, String> {
         return match token {
             &Token::LPAREN => match (parser.expr(None)?, parser.lexer.next()) {
-                (expr, Some(Token::RPAREN)) => Ok(GroupedExpr::Group(expr)),
+                (expr, Some(Token::RPAREN)) => Ok(GroupedExpr(expr)),
                 (expr, _)                   => Err(String::from(format!("Grouping Parse Error: Expected token {:?} after {:?}", Token::RPAREN, expr)))
             },
             _              => Err(String::from(format!("Grouping Parse Error: Expected token {:?}", Token::LPAREN)))
@@ -64,7 +64,7 @@ impl PrefixParselet {
 
     fn variable(&self, parser: &mut Parser, token: &Token) -> Result<Variable, String> {
         return match token {
-            &Token::ID(ref name) => Ok(Variable::Var(name.clone())),
+            &Token::ID(ref name) => Ok(Variable(name.clone())),
             _                    => Err(String::from("Variable Parse Error: Expected token id"))
         };
     }
@@ -77,7 +77,7 @@ impl PrefixParselet {
             _                => Err(String::from(format!("Unary Op Parse Error: Expected one of {:?}", vec![Token::PLUS, Token::MINUS, Token::NOT])))
         }?;
 
-        return Ok(UnaryOpExpr::UnaryOp(operator, parser.expr(Some(self.get_precedence()))?));
+        return Ok(UnaryOpExpr(operator, parser.expr(Some(self.get_precedence()))?));
     }
 }
 
@@ -121,13 +121,13 @@ impl InfixParselet {
             )
         }?;
 
-        return Ok(BinaryOpExpr::BinaryOp(left.clone(), operator, parser.expr(Some(self.get_precedence()))?));
+        return Ok(BinaryOpExpr(left.clone(), operator, parser.expr(Some(self.get_precedence()))?));
     }
 
     fn function_call(&self, parser: &mut Parser, left: &Expr, token: &Token) -> Result<FunctionCall, String> {
         return match (left, token) {
             (&Expr::Variable(ref name), &Token::LPAREN) => match (parser.call_parameters()?, parser.lexer.next()) {
-                (parameters, Some(Token::RPAREN)) => Ok(FunctionCall::Call(name.clone(), parameters)),
+                (parameters, Some(Token::RPAREN)) => Ok(FunctionCall(name.clone(), parameters)),
                 (parameters, _)                   => Err(String::from(format!("Function Call Parse Error: Expected token {:?} after {:?}", Token::RPAREN, parameters)))
             },
             (_, _)                                      => Err(String::from(format!("Function Call Parse Error: Expected variable token and {:?}", Token::LPAREN)))

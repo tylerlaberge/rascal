@@ -122,14 +122,14 @@ impl<'a> Parser<'a> {
             _                => Err(String::from(format!("Program Parse Error: Expected token {:?}", Token::DOT)))
         }?;
 
-        return Ok(Program::Program(variable, block));
+        return Ok(Program(variable, block));
     }
 
     /// <pre>
     ///     block :: declarations compound_statement
     /// </pre>
     pub fn block(&mut self) -> Result<Block, String> {
-        return Ok(Block::Block(self.declarations()?, self.compound_statement()?));
+        return Ok(Block(self.declarations()?, self.compound_statement()?));
     }
 
     /// <pre>
@@ -207,7 +207,7 @@ impl<'a> Parser<'a> {
 
         return match self.lexer.next() {
             Some(Token::COLON) => match (self.type_spec()?, self.lexer.next()) {
-                (type_spec, Some(Token::SEMI)) => Ok(VariableDeclaration::Variables(ids, type_spec)),
+                (type_spec, Some(Token::SEMI)) => Ok(VariableDeclaration(ids, type_spec)),
                 (type_spec, _)                 => Err(String::from(format!("Variable Declaration Parse Error: Expected {:?} token after {:?}", Token::SEMI, type_spec)))
             },
             _                  => Err(String::from(format!("Variable Declaration Parse Error: Expected {:?} token after declared variables", Token::COLON)))
@@ -244,14 +244,14 @@ impl<'a> Parser<'a> {
                     (formal_parameter_list, _)                   => Err(format!("Procedure Declaration Parse Error: Expected {:?} after {:?}", Token::RPAREN, formal_parameter_list))
                 }
             }
-            _                   => Ok(FormalParameterList::FormalParameters(vec![]))
+            _                    => Ok(FormalParameterList(vec![]))
         }?;
         let block = match self.lexer.next() {
             Some(Token::SEMI) => self.block(),
             _                 => Err(String::from(format!("Procedure Declaration Parse Error: Expected token {:?} after {:?}", Token::SEMI, parameters)))
         }?;
 
-        return Ok(ProcedureDeclaration::Procedure(name, parameters, block));
+        return Ok(ProcedureDeclaration(name, parameters, block));
     }
 
     /// <pre>
@@ -278,7 +278,7 @@ impl<'a> Parser<'a> {
             _                 => Err(String::from(format!("Function Declaration Parse Error: Expected {:?} after {:?}", Token::SEMI, return_type)))
         }?;
 
-        return Ok(FunctionDeclaration::Function(name, parameters, block, return_type));
+        return Ok(FunctionDeclaration(name, parameters, block, return_type));
     }
 
     /// <pre>
@@ -298,7 +298,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        return Ok(FormalParameterList::FormalParameters(parameters));
+        return Ok(FormalParameterList(parameters));
     }
 
     /// <pre>
@@ -332,7 +332,7 @@ impl<'a> Parser<'a> {
             _                  => Err(String::from(format!("Formal Parameters Parse Error: Expected token {:?} after parameter identifiers", Token::COLON)))
         }?;
 
-        return Ok(FormalParameters::Parameters(ids, type_spec));
+        return Ok(FormalParameters(ids, type_spec));
     }
 
     /// <pre>
@@ -350,7 +350,7 @@ impl<'a> Parser<'a> {
         }
         self.lexer.next(); // eat the 'END' token
 
-        return Ok(Compound::Statements(statements));
+        return Ok(Compound(statements));
     }
 
     /// <pre>
@@ -399,7 +399,7 @@ impl<'a> Parser<'a> {
     fn assignment_statement(&mut self) -> Result<Assignment, String> {
         return match (self.variable()?, self.lexer.next()) {
             (var, Some(Token::ASSIGN)) => match (self.expr(None)?, self.lexer.next()) {
-                (expr, Some(Token::SEMI)) => Ok(Assignment::Assign(var, expr)),
+                (expr, Some(Token::SEMI)) => Ok(Assignment(var, expr)),
                 (expr, _)                 => Err(String::from(format!("Assignment Statement Parse Error: Expected {:?} after {:?}", Token::SEMI, expr)))
             },
             (var, _)                   => Err(String::from(format!("Assignment Statement Parse Error: Expected {:?} after {:?}", Token::ASSIGN, var)))
@@ -411,7 +411,7 @@ impl<'a> Parser<'a> {
     /// </pre>
     fn variable(&mut self) -> Result<Variable, String> {
         return match self.lexer.next() {
-            Some(Token::ID(id)) => Ok(Variable::Var(id)),
+            Some(Token::ID(id)) => Ok(Variable(id)),
             _                   => Err(String::from("Variable Parse Error: Expected id token"))
         };
     }
@@ -426,7 +426,7 @@ impl<'a> Parser<'a> {
         }?;
 
         return match (self.call_parameters()?, self.lexer.next(), self.lexer.next()) {
-            (call_parameters, Some(Token::RPAREN), Some(Token::SEMI)) => Ok(FunctionCall::Call(function_id, call_parameters)),
+            (call_parameters, Some(Token::RPAREN), Some(Token::SEMI)) => Ok(FunctionCall(function_id, call_parameters)),
             (call_parameters, _, _)                                   => Err(String::from(format!("Function Call Parse Error: Expected tokens {:?} {:?} after {:?}", Token::RPAREN, Token::SEMI, call_parameters)))
         };
     }
@@ -436,7 +436,7 @@ impl<'a> Parser<'a> {
     /// </pre>
     pub fn call_parameters(&mut self) -> Result<CallParameters, String> {
         if let Some(&Token::RPAREN) = self.lexer.peek() {
-            return Ok(CallParameters::Parameters(vec![]));
+            return Ok(CallParameters(vec![]));
         } else {
             let mut parameters = vec![self.expr(None)?];
 
@@ -445,7 +445,7 @@ impl<'a> Parser<'a> {
                 parameters.push(self.expr(None)?);
             }
 
-            return Ok(CallParameters::Parameters(parameters));
+            return Ok(CallParameters(parameters));
         }
     }
 
@@ -501,14 +501,14 @@ mod tests {
     fn program() {
         let mut parser = get_parser("program test; begin end.");
 
-        assert_matches!(parser.program(), Ok(Program::Program(_, _)));
+        assert_matches!(parser.program(), Ok(Program(_, _)));
     }
 
     #[test]
     fn block() {
         let mut parser = get_parser("begin end");
 
-        assert_matches!(parser.block(), Ok(Block::Block(_, _)));
+        assert_matches!(parser.block(), Ok(Block(_, _)));
     }
 
     #[test]
@@ -529,8 +529,8 @@ mod tests {
     fn variable_declaration() {
         let mut parser = get_parser("foo, bar, baz : integer;");
         match parser.variable_declaration() {
-            Ok(VariableDeclaration::Variables(names, _)) => assert_eq!(names, vec![String::from("foo"), String::from("bar"), String::from("baz")]),
-            Err(e)                                       => panic!(e)
+            Ok(VariableDeclaration(names, _)) => assert_eq!(names, vec![String::from("foo"), String::from("bar"), String::from("baz")]),
+            Err(e)                            => panic!(e)
         }
     }
 
@@ -548,8 +548,8 @@ mod tests {
     fn procedure_declaration() {
         let mut parser = get_parser("procedure test(); begin end");
         match parser.procedure_declaration() {
-            Ok(ProcedureDeclaration::Procedure(name, _, _)) => assert_eq!(name, String::from("test")),
-            Err(e)                                          => panic!(e)
+            Ok(ProcedureDeclaration(name, _, _)) => assert_eq!(name, String::from("test")),
+            Err(e)                               => panic!(e)
         }
     }
 
@@ -557,8 +557,8 @@ mod tests {
     fn function_declaration() {
         let mut parser = get_parser("function test(): integer; begin end");
         match parser.function_declaration() {
-            Ok(FunctionDeclaration::Function(name, _, _, _)) => assert_eq!(name, String::from("test")),
-            Err(e)                                           => panic!(e)
+            Ok(FunctionDeclaration(name, _, _, _)) => assert_eq!(name, String::from("test")),
+            Err(e)                                 => panic!(e)
         }
     }
 
@@ -566,15 +566,15 @@ mod tests {
     fn formal_parameters_list() {
         let mut parser = get_parser("a: integer; b: real; c, d: string");
 
-        assert_matches!(parser.formal_parameter_list(), Ok(FormalParameterList::FormalParameters(_)));
+        assert_matches!(parser.formal_parameter_list(), Ok(FormalParameterList(_)));
     }
 
     #[test]
     fn formal_parameters() {
         let mut parser = get_parser("a, b, c: integer");
         match parser.formal_parameters() {
-            Ok(FormalParameters::Parameters(names, _)) => assert_eq!(names, vec![String::from("a"), String::from("b"), String::from("c")]),
-            Err(e)                                     => panic!(e)
+            Ok(FormalParameters(names, _)) => assert_eq!(names, vec![String::from("a"), String::from("b"), String::from("c")]),
+            Err(e)                         => panic!(e)
         };
     }
 
@@ -582,7 +582,7 @@ mod tests {
     fn compound_statement() {
         let mut parser = get_parser("begin end");
 
-        assert_matches!(parser.compound_statement(), Ok(Compound::Statements(_)));
+        assert_matches!(parser.compound_statement(), Ok(Compound(_)));
     }
 
     #[test]
@@ -630,15 +630,15 @@ mod tests {
     fn assignment_statement() {
         let mut parser = get_parser("foo := 5;");
 
-        assert_matches!(parser.assignment_statement(), Ok(Assignment::Assign(_, _)));
+        assert_matches!(parser.assignment_statement(), Ok(Assignment(_, _)));
     }
 
     #[test]
     fn variable() {
         let mut parser = get_parser("foo");
         match parser.variable() {
-            Ok(Variable::Var(name)) => assert_eq!(name, String::from("foo")),
-            Err(e)                  => panic!(e)
+            Ok(Variable(name)) => assert_eq!(name, String::from("foo")),
+            Err(e)             => panic!(e)
         };
     }
 
@@ -646,14 +646,14 @@ mod tests {
     fn function_call() {
         let mut parser = get_parser("test(foo, bar, 5 + 5);");
 
-        assert_matches!(parser.function_call(), Ok(FunctionCall::Call(_, _)));
+        assert_matches!(parser.function_call(), Ok(FunctionCall(_, _)));
     }
 
     #[test]
     fn call_parameters() {
         let mut parser = get_parser("foo, bar, 5 + 5");
 
-        assert_matches!(parser.call_parameters(), Ok(CallParameters::Parameters(_)));
+        assert_matches!(parser.call_parameters(), Ok(CallParameters(_)));
     }
 
     #[test]
@@ -661,8 +661,8 @@ mod tests {
         let mut parser = get_parser("+5");
         match parser.expr(Some(0)) {
             Ok(Expr::UnaryOp(unary_expr)) => match *unary_expr {
-                UnaryOpExpr::UnaryOp(UnaryOperator::Plus, _) => (),
-                _                                            => panic!("Failure: Expected unary plus AST node")
+                UnaryOpExpr(UnaryOperator::Plus, _) => (),
+                _                                   => panic!("Failure: Expected unary plus AST node")
             },
             _                             => panic!("Failure: Expected unary expression AST node")
         };
@@ -673,8 +673,8 @@ mod tests {
         let mut parser = get_parser("-5");
         match parser.expr(Some(0)) {
             Ok(Expr::UnaryOp(unary_expr)) => match *unary_expr {
-                UnaryOpExpr::UnaryOp(UnaryOperator::Minus, _) => (),
-                _                                             => panic!("Failure: Expected unary minus AST node")
+                UnaryOpExpr(UnaryOperator::Minus, _) => (),
+                _                                    => panic!("Failure: Expected unary minus AST node")
             },
             _                             => panic!("Failure: Expected unary expression AST node")
         };
@@ -685,8 +685,8 @@ mod tests {
         let mut parser = get_parser("5 + 5");
         match parser.expr(Some(0)) {
             Ok(Expr::BinOp(binop_expr)) => match *binop_expr {
-                BinaryOpExpr::BinaryOp(_, BinaryOperator::Plus, _) => (),
-                _                                                  => panic!("Failure: Expected binary addition AST node")
+                BinaryOpExpr(_, BinaryOperator::Plus, _) => (),
+                _                                        => panic!("Failure: Expected binary addition AST node")
             },
             _                           => panic!("Failure: Expected binary expression AST node")
         };
@@ -697,8 +697,8 @@ mod tests {
         let mut parser = get_parser("5 - 5");
         match parser.expr(Some(0)) {
             Ok(Expr::BinOp(binop_expr)) => match *binop_expr {
-                BinaryOpExpr::BinaryOp(_, BinaryOperator::Minus, _) => (),
-                _                                                   => panic!("Failure: Expected binary subtraction AST node")
+                BinaryOpExpr(_, BinaryOperator::Minus, _) => (),
+                _                                         => panic!("Failure: Expected binary subtraction AST node")
             },
             _                           => panic!("Failure: Expected binary expression AST node")
         };
@@ -709,8 +709,8 @@ mod tests {
         let mut parser = get_parser("5 * 5");
         match parser.expr(Some(0)) {
             Ok(Expr::BinOp(binop_expr)) => match *binop_expr {
-                BinaryOpExpr::BinaryOp(_, BinaryOperator::Multiply, _) => (),
-                _                                                      => panic!("Failure: Expected binary multiply AST node")
+                BinaryOpExpr(_, BinaryOperator::Multiply, _) => (),
+                _                                            => panic!("Failure: Expected binary multiply AST node")
             },
             _                           => panic!("Failure: Expected binary expression AST node")
         };
@@ -721,8 +721,8 @@ mod tests {
         let mut parser = get_parser("5 div 5");
         match parser.expr(Some(0)) {
             Ok(Expr::BinOp(binop_expr)) => match *binop_expr {
-                BinaryOpExpr::BinaryOp(_, BinaryOperator::IntegerDivide, _) => (),
-                _                                                           => panic!("Failure: Expected binary integer division AST node")
+                BinaryOpExpr(_, BinaryOperator::IntegerDivide, _) => (),
+                _                                                 => panic!("Failure: Expected binary integer division AST node")
             },
             _                           => panic!("Failure: Expected binary expression AST node")
         };
@@ -733,8 +733,8 @@ mod tests {
         let mut parser = get_parser("5 / 5");
         match parser.expr(Some(0)) {
             Ok(Expr::BinOp(binop_expr)) => match *binop_expr {
-                BinaryOpExpr::BinaryOp(_, BinaryOperator::FloatDivide, _) => (),
-                _                                                         => panic!("Failure: Expected binary float division AST node")
+                BinaryOpExpr(_, BinaryOperator::FloatDivide, _) => (),
+                _                                               => panic!("Failure: Expected binary float division AST node")
             },
             _                           => panic!("Failure: Expected binary expression AST node")
         };
@@ -745,7 +745,7 @@ mod tests {
         let mut parser = get_parser("(5 + 5)");
         match parser.expr(Some(0)) {
             Ok(Expr::Group(grouped_expr)) => match *grouped_expr {
-                GroupedExpr::Group(_) => ()
+                GroupedExpr(_) => ()
             },
             _                             => panic!("Failure: Expected grouped expression AST node")
         };
@@ -778,6 +778,6 @@ mod tests {
     fn parse() {
         let mut parser = get_parser("program test; begin end.");
 
-        assert_matches!(parser.parse(), Ok(Program::Program(_, _)));
+        assert_matches!(parser.parse(), Ok(Program(_, _)));
     }
 }

@@ -68,14 +68,9 @@ impl Interpreter {
 
     pub fn visit_program(&mut self, node: &Program) -> Result<(), String> {
         return match node {
-            &Program::Program(ref var, ref block) => {
-                match var {
-                    &Variable::Var(ref name) => {
-                        self.enter_scope(name.to_owned());
-                        self.init_built_ins()?;
-                    }
-                };
-
+            &Program(Variable(ref name), ref block) => {
+                self.enter_scope(name.to_owned());
+                self.init_built_ins()?;
                 self.visit_block(block)?;
                 self.leave_scope();
 
@@ -86,7 +81,7 @@ impl Interpreter {
 
     pub fn visit_block(&mut self, node: &Block) -> Result<Object, String> {
         return match node {
-            &Block::Block(ref declarations, ref compound) => {
+            &Block(ref declarations, ref compound) => {
                 self.visit_declarations(declarations)?;
                 let result = self.visit_compound(compound)?;
 
@@ -116,7 +111,7 @@ impl Interpreter {
 
     pub fn visit_procedure_declaration(&mut self, node: &ProcedureDeclaration) -> Result<(), String> {
         return match node {
-            &ProcedureDeclaration::Procedure(ref name, ref parameter_list, ref block) => {
+            &ProcedureDeclaration(ref name, ref parameter_list, ref block) => {
                 let parameters = self.visit_formal_parameter_list(parameter_list)?;
 
                 self.scope()?.set(name.to_owned(), Object::Procedure(name.to_owned(), parameters, block.clone()));
@@ -128,7 +123,7 @@ impl Interpreter {
 
     pub fn visit_function_declaration(&mut self, node: &FunctionDeclaration) -> Result<(), String> {
         return match node {
-            &FunctionDeclaration::Function(ref name, ref parameter_list, ref block, ref return_type) => {
+            &FunctionDeclaration(ref name, ref parameter_list, ref block, ref return_type) => {
                 let parameters = self.visit_formal_parameter_list(parameter_list)?;
 
                 self.scope()?.set(name.to_owned(), Object::Function(name.to_owned(), parameters, block.clone(), return_type.clone()));
@@ -140,7 +135,7 @@ impl Interpreter {
 
     pub fn visit_formal_parameter_list(&mut self, node: &FormalParameterList) -> Result<Vec<String>, String> {
         return match node {
-            &FormalParameterList::FormalParameters(ref formal_parameters) => {
+            &FormalParameterList(ref formal_parameters) => {
                 let mut var_names: Vec<String> = vec![];
                 for parameters in formal_parameters {
                     let mut other_var_names = self.visit_formal_parameters(parameters)?;
@@ -153,13 +148,13 @@ impl Interpreter {
 
     pub fn visit_formal_parameters(&mut self, node: &FormalParameters) -> Result<Vec<String>, String> {
         return match node {
-            &FormalParameters::Parameters(ref names, _) => Ok(names.to_vec())
+            &FormalParameters(ref names, _) => Ok(names.to_vec())
         };
     }
 
     pub fn visit_compound(&mut self, node: &Compound) -> Result<Object, String> {
         return match node {
-            &Compound::Statements(ref statements) => {
+            &Compound(ref statements) => {
                 let mut result = Object::Unit;
                 for statement in statements {
                     result = self.visit_statement(statement)?;
@@ -213,7 +208,7 @@ impl Interpreter {
 
     pub fn visit_assignment(&mut self, node: &Assignment) -> Result<Object, String> {
         return match node {
-            &Assignment::Assign(Variable::Var(ref name), ref expression) => {
+            &Assignment(Variable(ref name), ref expression) => {
                 let val = self.visit_expr(expression)?;
                 self.scope()?.set(name.clone(), val.clone());
 
@@ -224,7 +219,7 @@ impl Interpreter {
 
     pub fn visit_function_call(&mut self, node: &FunctionCall) -> Result<Object, String> {
         return match node {
-            &FunctionCall::Call(Variable::Var(ref function_name), CallParameters::Parameters(ref given_parameters)) => {
+            &FunctionCall(Variable(ref function_name), CallParameters(ref given_parameters)) => {
                 let callable = match self.scope()?.get(function_name) {
                     Some(&Object::Function(ref name, ref declared_params, ref block, ref return_type))  => Ok(Object::Function(name.clone(), declared_params.to_vec(), block.clone(), return_type.clone())),
                     Some(&Object::Procedure(ref name, ref declared_params, ref block))                  => Ok(Object::Procedure(name.clone(), declared_params.to_vec(), block.clone())),
@@ -293,33 +288,33 @@ impl Interpreter {
 
     pub fn visit_unaryop(&mut self, node: &UnaryOpExpr) -> Result<Object, String> {
         return match node {
-            &UnaryOpExpr::UnaryOp(UnaryOperator::Plus, ref expr)  => Ok(self.visit_expr(expr)?.unary_plus()?),
-            &UnaryOpExpr::UnaryOp(UnaryOperator::Minus, ref expr) => Ok(self.visit_expr(expr)?.unary_minus()?),
-            &UnaryOpExpr::UnaryOp(UnaryOperator::Not, ref expr)   => Ok(self.visit_expr(expr)?.negate()?)
+            &UnaryOpExpr(UnaryOperator::Plus, ref expr)  => Ok(self.visit_expr(expr)?.unary_plus()?),
+            &UnaryOpExpr(UnaryOperator::Minus, ref expr) => Ok(self.visit_expr(expr)?.unary_minus()?),
+            &UnaryOpExpr(UnaryOperator::Not, ref expr)   => Ok(self.visit_expr(expr)?.negate()?)
         };
     }
 
     pub fn visit_binop(&mut self, node: &BinaryOpExpr) -> Result<Object, String> {
         return match node {
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Plus, ref right)               => Ok(self.visit_expr(left)?.add(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Minus, ref right)              => Ok(self.visit_expr(left)?.subtract(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Multiply, ref right)           => Ok(self.visit_expr(left)?.multiply(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::FloatDivide, ref right)        => Ok(self.visit_expr(left)?.float_divide(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::IntegerDivide, ref right)      => Ok(self.visit_expr(left)?.integer_divide(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::And, ref right)                => Ok(self.visit_expr(left)?.and(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Or, ref right)                 => Ok(self.visit_expr(left)?.or(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::LessThan, ref right)           => Ok(self.visit_expr(left)?.less_than(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::LessThanOrEqual, ref right)    => Ok(self.visit_expr(left)?.less_than_or_equal(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::GreaterThan, ref right)        => Ok(self.visit_expr(left)?.greater_than(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::GreaterThanOrEqual, ref right) => Ok(self.visit_expr(left)?.greater_than_or_equal(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::Equal, ref right)              => Ok(self.visit_expr(left)?.equal(&self.visit_expr(right)?)?),
-            &BinaryOpExpr::BinaryOp(ref left, BinaryOperator::NotEqual, ref right)           => Ok(self.visit_expr(left)?.not_equal(&self.visit_expr(right)?)?),
+            &BinaryOpExpr(ref left, BinaryOperator::Plus, ref right)               => Ok(self.visit_expr(left)?.add(&self.visit_expr(right)?)?),
+            &BinaryOpExpr(ref left, BinaryOperator::Minus, ref right)              => Ok(self.visit_expr(left)?.subtract(&self.visit_expr(right)?)?),
+            &BinaryOpExpr(ref left, BinaryOperator::Multiply, ref right)           => Ok(self.visit_expr(left)?.multiply(&self.visit_expr(right)?)?),
+            &BinaryOpExpr(ref left, BinaryOperator::FloatDivide, ref right)        => Ok(self.visit_expr(left)?.float_divide(&self.visit_expr(right)?)?),
+            &BinaryOpExpr(ref left, BinaryOperator::IntegerDivide, ref right)      => Ok(self.visit_expr(left)?.integer_divide(&self.visit_expr(right)?)?),
+            &BinaryOpExpr(ref left, BinaryOperator::And, ref right)                => Ok(self.visit_expr(left)?.and(&self.visit_expr(right)?)?),
+            &BinaryOpExpr(ref left, BinaryOperator::Or, ref right)                 => Ok(self.visit_expr(left)?.or(&self.visit_expr(right)?)?),
+            &BinaryOpExpr(ref left, BinaryOperator::LessThan, ref right)           => Ok(self.visit_expr(left)?.less_than(&self.visit_expr(right)?)?),
+            &BinaryOpExpr(ref left, BinaryOperator::LessThanOrEqual, ref right)    => Ok(self.visit_expr(left)?.less_than_or_equal(&self.visit_expr(right)?)?),
+            &BinaryOpExpr(ref left, BinaryOperator::GreaterThan, ref right)        => Ok(self.visit_expr(left)?.greater_than(&self.visit_expr(right)?)?),
+            &BinaryOpExpr(ref left, BinaryOperator::GreaterThanOrEqual, ref right) => Ok(self.visit_expr(left)?.greater_than_or_equal(&self.visit_expr(right)?)?),
+            &BinaryOpExpr(ref left, BinaryOperator::Equal, ref right)              => Ok(self.visit_expr(left)?.equal(&self.visit_expr(right)?)?),
+            &BinaryOpExpr(ref left, BinaryOperator::NotEqual, ref right)           => Ok(self.visit_expr(left)?.not_equal(&self.visit_expr(right)?)?),
         };
     }
 
     pub fn visit_group(&mut self, node: &GroupedExpr) -> Result<Object, String> {
         return match node {
-            &GroupedExpr::Group(ref expr) => self.visit_expr(expr)
+            &GroupedExpr(ref expr) => self.visit_expr(expr)
         };
     }
 
@@ -334,7 +329,7 @@ impl Interpreter {
 
     pub fn visit_variable(&mut self, node: &Variable) -> Result<Object, String> {
         return match node {
-            &Variable::Var(ref name) => {
+            &Variable(ref name) => {
                 match self.scope()?.get(name) {
                     Some(object) => Ok(object.clone()),
                     None         => Err(String::from(format!("Internal Interpreter Error: Unknown variable '{}'", name)))
@@ -376,9 +371,9 @@ mod tests {
     #[test]
     fn visit_program() {
         let mut interpreter = Interpreter::new();
-        let program = Program::Program(
-            Variable::Var(String::from("test")),
-            Block::Block(vec![], Compound::Statements(vec![]))
+        let program = Program(
+            Variable(String::from("test")),
+            Block(vec![], Compound(vec![]))
         );
 
         assert_eq!(interpreter.visit_program(&program), Ok(()));
@@ -387,7 +382,7 @@ mod tests {
     #[test]
     fn visit_block() {
         let mut interpreter = Interpreter::new();
-        let block = Block::Block(vec![], Compound::Statements(vec![]));
+        let block = Block(vec![], Compound(vec![]));
 
         assert_eq!(interpreter.visit_block(&block), Ok(Object::Unit));
     }
@@ -409,10 +404,10 @@ mod tests {
         let mut interpreter = Interpreter::new();
         interpreter.enter_scope(String::from("test_scope"));
 
-        let procedure = ProcedureDeclaration::Procedure(
+        let procedure = ProcedureDeclaration(
             String::from("test"),
-            FormalParameterList::FormalParameters(vec![]),
-            Block::Block(vec![], Compound::Statements(vec![]))
+            FormalParameterList(vec![]),
+            Block(vec![], Compound(vec![]))
         );
 
         assert_eq!(interpreter.visit_procedure_declaration(&procedure), Ok(()));
@@ -422,7 +417,7 @@ mod tests {
                 &Object::Procedure(
                     String::from("test"),
                     vec![],
-                    Block::Block(vec![], Compound::Statements(vec![]))
+                    Block(vec![], Compound(vec![]))
                 )
             )
         );
@@ -433,10 +428,10 @@ mod tests {
         let mut interpreter = Interpreter::new();
         interpreter.enter_scope(String::from("test_scope"));
 
-        let function = FunctionDeclaration::Function(
+        let function = FunctionDeclaration(
             String::from("test"),
-            FormalParameterList::FormalParameters(vec![]),
-            Block::Block(vec![], Compound::Statements(vec![])),
+            FormalParameterList(vec![]),
+            Block(vec![], Compound(vec![])),
             TypeSpec::INTEGER
         );
 
@@ -447,7 +442,7 @@ mod tests {
                 &Object::Function(
                     String::from("test"),
                     vec![],
-                    Block::Block(vec![], Compound::Statements(vec![])),
+                    Block(vec![], Compound(vec![])),
                     TypeSpec::INTEGER
                 )
             )
@@ -457,14 +452,14 @@ mod tests {
     #[test]
     fn visit_formal_parameter_list() {
         let mut interpreter = Interpreter::new();
-        let formal_parameter_list = FormalParameterList::FormalParameters(vec![
-            FormalParameters::Parameters(
+        let formal_parameter_list = FormalParameterList(vec![
+            FormalParameters(
                 vec![String::from("int_one"), String::from("int_two")], TypeSpec::INTEGER
             ),
-            FormalParameters::Parameters(
+            FormalParameters(
                 vec![String::from("bool_one")], TypeSpec::BOOLEAN
             ),
-            FormalParameters::Parameters(
+            FormalParameters(
                 vec![String::from("real_one"), String::from("real_two"), String::from("real_three")], TypeSpec::REAL
             )
         ]);
@@ -481,7 +476,7 @@ mod tests {
     #[test]
     fn visit_formal_parameters() {
         let mut interpreter = Interpreter::new();
-        let formal_parameters = FormalParameters::Parameters(
+        let formal_parameters = FormalParameters(
             vec![String::from("foo"), String::from("bar")],
             TypeSpec::INTEGER
         );
@@ -497,9 +492,9 @@ mod tests {
         let mut interpreter = Interpreter::new();
         interpreter.enter_scope(String::from("test_scope"));
 
-        let compound = Compound::Statements(vec![
-            Statement::Assignment(Assignment::Assign(Variable::Var(String::from("foo")), Expr::Literal(Literal::Int(5)))),
-            Statement::Assignment(Assignment::Assign(Variable::Var(String::from("bar")), Expr::Literal(Literal::Boolean(true)))),
+        let compound = Compound(vec![
+            Statement::Assignment(Assignment(Variable(String::from("foo")), Expr::Literal(Literal::Int(5)))),
+            Statement::Assignment(Assignment(Variable(String::from("bar")), Expr::Literal(Literal::Boolean(true)))),
         ]);
 
         assert_eq!(
@@ -521,12 +516,12 @@ mod tests {
         let mut interpreter = Interpreter::new();
         let if_statement = IfStatement::IfElseIf(             // if false then
             Expr::Literal(Literal::Boolean(false)),        //     begin
-            Compound::Statements(vec![]),                  //     end
+            Compound(vec![]),                              //     end
             Box::new(                                      // else if true then
                 IfStatement::IfElse(                       //     begin
                     Expr::Literal(Literal::Boolean(true)), //     end
-                    Compound::Statements(vec![]),          // else
-                    Compound::Statements(vec![]))          //     begin
+                    Compound(vec![]),                      // else
+                    Compound(vec![]))                      //     begin
             )                                                 //     end
         );
 
@@ -538,8 +533,8 @@ mod tests {
         let mut interpreter = Interpreter::new();
         interpreter.enter_scope(String::from("test_scope"));
 
-        let assignment = Assignment::Assign(
-            Variable::Var(String::from("test")),
+        let assignment = Assignment(
+            Variable(String::from("test")),
             Expr::Literal(Literal::Int(5))
         );
 
@@ -559,12 +554,12 @@ mod tests {
             Object::Function(
                 String::from("test_function"),
                 vec![],
-                Block::Block(
+                Block(
                     vec![],
-                    Compound::Statements(vec![
+                    Compound(vec![
                         Statement::Assignment(
-                            Assignment::Assign(
-                                Variable::Var(String::from("foo")),
+                            Assignment(
+                                Variable(String::from("foo")),
                                 Expr::Literal(Literal::Int(5))
                             )
                         )
@@ -574,9 +569,9 @@ mod tests {
             )
         );
 
-        let function_call = FunctionCall::Call(
-            Variable::Var(String::from("test_function")),
-            CallParameters::Parameters(vec![])
+        let function_call = FunctionCall(
+            Variable(String::from("test_function")),
+            CallParameters(vec![])
         );
 
         assert_eq!(
@@ -588,7 +583,7 @@ mod tests {
     #[test]
     fn visit_unaryop() {
         let mut interpreter = Interpreter::new();
-        let unaryop_expr = UnaryOpExpr::UnaryOp(
+        let unaryop_expr = UnaryOpExpr(
             UnaryOperator::Minus,
             Expr::Literal(Literal::Int(5))
         );
@@ -602,7 +597,7 @@ mod tests {
     #[test]
     fn visit_binop() {
         let mut interpreter = Interpreter::new();
-        let binop_expr = BinaryOpExpr::BinaryOp(
+        let binop_expr = BinaryOpExpr(
             Expr::Literal(Literal::Int(5)),
             BinaryOperator::Multiply,
             Expr::Literal(Literal::Int(10))
@@ -617,7 +612,7 @@ mod tests {
     #[test]
     fn visit_group() {
         let mut interpreter = Interpreter::new();
-        let grouped_expr = GroupedExpr::Group(Expr::Literal(Literal::Int(5)));
+        let grouped_expr = GroupedExpr(Expr::Literal(Literal::Int(5)));
 
         assert_eq!(
             interpreter.visit_group(&grouped_expr),
@@ -645,7 +640,7 @@ mod tests {
             Object::Primitive(Primitive::Float(5.5))
         );
 
-        let variable = Variable::Var(String::from("test_var"));
+        let variable = Variable(String::from("test_var"));
 
         assert_eq!(
             interpreter.visit_variable(&variable),

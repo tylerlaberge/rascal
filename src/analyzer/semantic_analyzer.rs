@@ -69,14 +69,9 @@ impl SemanticAnalyzer {
 
     pub fn visit_program(&mut self, node: &Program) -> Result<(), String> {
         return match node {
-            &Program::Program(ref var, ref block) => {
-                match var {
-                    &Variable::Var(ref name) => {
-                        self.enter_scope(name.to_owned());
-                        self.init_built_ins()?;
-                    }
-                };
-
+            &Program(Variable(ref name), ref block) => {
+                self.enter_scope(name.to_owned());
+                self.init_built_ins()?;
                 self.visit_block(block)?;
                 self.leave_scope();
 
@@ -87,7 +82,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_block(&mut self, node: &Block) -> Result<TypeSpec, String> {
         return match node {
-            &Block::Block(ref declarations, ref compound) => {
+            &Block(ref declarations, ref compound) => {
                 self.visit_declarations(declarations)?;
                 let return_type = self.visit_compound(compound)?;
 
@@ -123,7 +118,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_procedure_declaration(&mut self, node: &ProcedureDeclaration) -> Result<(), String> {
         return match node {
-            &ProcedureDeclaration::Procedure(ref name, ref parameter_list, ref block) => {
+            &ProcedureDeclaration(ref name, ref parameter_list, ref block) => {
                 let parameters = self.visit_formal_parameter_list(parameter_list)?;
 
                 self.scope()?.define(Symbol::Callable(CallableSymbol::Procedure(name.to_owned(), parameters.to_vec())));
@@ -143,7 +138,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_function_declaration(&mut self, node: &FunctionDeclaration) -> Result<(), String> {
         return match node {
-            &FunctionDeclaration::Function(ref name, ref parameter_list, ref block, ref return_type) => {
+            &FunctionDeclaration(ref name, ref parameter_list, ref block, ref return_type) => {
                 let parameters = self.visit_formal_parameter_list(parameter_list)?;
 
                 self.scope()?.define(Symbol::Callable(CallableSymbol::Function(name.to_owned(), parameters.to_vec(), return_type.clone())));
@@ -172,7 +167,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_formal_parameter_list(&mut self, node: &FormalParameterList) -> Result<Vec<VarSymbol>, String> {
         return match node {
-            &FormalParameterList::FormalParameters(ref formal_parameters) => {
+            &FormalParameterList(ref formal_parameters) => {
                 let mut vars: Vec<VarSymbol> = vec![];
                 for parameters in formal_parameters {
                     let mut other_vars = self.visit_formal_parameters(parameters)?;
@@ -187,7 +182,7 @@ impl SemanticAnalyzer {
         let mut vars: Vec<VarSymbol> = vec![];
 
         match node {
-            &FormalParameters::Parameters(ref names, ref type_spec) => match type_spec {
+            &FormalParameters(ref names, ref type_spec) => match type_spec {
                 &TypeSpec::INTEGER => Ok(names.iter().for_each(|name| vars.push(VarSymbol::INTEGER(name.to_owned())))),
                 &TypeSpec::REAL    => Ok(names.iter().for_each(|name| vars.push(VarSymbol::REAL(name.to_owned())))),
                 &TypeSpec::STRING  => Ok(names.iter().for_each(|name| vars.push(VarSymbol::STRING(name.to_owned())))),
@@ -201,7 +196,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_variable_declaration(&mut self, node: &VariableDeclaration) -> Result<(), String> {
         return match node {
-            &VariableDeclaration::Variables(ref names, ref typespec) => {
+            &VariableDeclaration(ref names, ref typespec) => {
                 for name in names {
                     match self.scope()?.local_lookup(name) {
                         Some(_) => Err(String::from(format!("Semantic Analyzer Error: Variable declared more than once: {}", name))),
@@ -222,7 +217,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_compound(&mut self, node: &Compound) -> Result<TypeSpec, String> {
         return match node {
-            &Compound::Statements(ref statements) => {
+            &Compound(ref statements) => {
                 let mut last_type = TypeSpec::UNIT;
                 for statement in statements {
                     last_type = self.visit_statement(statement)?;
@@ -278,7 +273,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_assignment(&mut self, node: &Assignment) -> Result<TypeSpec, String> {
         return match node {
-            &Assignment::Assign(Variable::Var(ref name), ref expression) => {
+            &Assignment(Variable(ref name), ref expression) => {
                 let symbol = match self.scope()?.lookup(name) {
                     Some(symbol)  => Ok(symbol.clone()),
                     None          => Err(String::from(format!("Semantic Analyzer Error: Variable {} was never defined", name)))
@@ -299,10 +294,10 @@ impl SemanticAnalyzer {
 
     pub fn visit_function_call(&mut self, node: &FunctionCall) -> Result<TypeSpec, String> {
         return match node {
-            &FunctionCall::Call(Variable::Var(ref name), ref parameters) => {
+            &FunctionCall(Variable(ref name), ref parameters) => {
                 let callable =  match self.scope()?.lookup(name) {
-                    Some(&Symbol::Callable(ref callable))   => Ok(callable.clone()),
-                    _                                       => Err(String::from(format!("Semantic Analyzer Error: Unknown callable '{:?}'", name)))
+                    Some(&Symbol::Callable(ref callable)) => Ok(callable.clone()),
+                    _                                     => Err(String::from(format!("Semantic Analyzer Error: Unknown callable '{:?}'", name)))
                 }?;
                 let declared_params = match callable {
                     CallableSymbol::Procedure(_, ref declared_params)   => declared_params.to_vec(),
@@ -333,7 +328,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_call_parameters(&mut self, node: &CallParameters) -> Result<Vec<TypeSpec>, String> {
         return match node {
-            &CallParameters::Parameters(ref expressions) => {
+            &CallParameters(ref expressions) => {
                 let mut parameters: Vec<TypeSpec> = vec![];
 
                 for expr in expressions.iter() {
@@ -358,7 +353,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_unaryop(&mut self, expr: &UnaryOpExpr) -> Result<TypeSpec, String> {
         return match expr {
-            &UnaryOpExpr::UnaryOp(ref operator, ref unary_expr) =>
+            &UnaryOpExpr(ref operator, ref unary_expr) =>
                 match (operator, self.visit_expr(unary_expr)?) {
                     (&UnaryOperator::Plus, TypeSpec::INTEGER)  => Ok(TypeSpec::INTEGER),
                     (&UnaryOperator::Minus, TypeSpec::INTEGER) => Ok(TypeSpec::INTEGER),
@@ -374,7 +369,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_binop(&mut self, expr: &BinaryOpExpr) -> Result<TypeSpec, String> {
         return match expr {
-            &BinaryOpExpr::BinaryOp(ref left, ref operator, ref right) =>
+            &BinaryOpExpr(ref left, ref operator, ref right) =>
                 match (self.visit_expr(left)?, operator, self.visit_expr(right)?) {
                     (TypeSpec::INTEGER, &BinaryOperator::Plus, TypeSpec::INTEGER)               => Ok(TypeSpec::INTEGER),
                     (TypeSpec::INTEGER, &BinaryOperator::Minus, TypeSpec::INTEGER)              => Ok(TypeSpec::INTEGER),
@@ -413,7 +408,7 @@ impl SemanticAnalyzer {
 
     fn visit_group(&mut self, expr: &GroupedExpr) -> Result<TypeSpec, String> {
         return match expr {
-            &GroupedExpr::Group(ref grouped_expr) => self.visit_expr(grouped_expr)
+            &GroupedExpr(ref grouped_expr) => self.visit_expr(grouped_expr)
         };
     }
 
@@ -428,7 +423,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_variable(&mut self, node: &Variable) -> Result<TypeSpec, String> {
         return match node {
-            &Variable::Var(ref name) => {
+            &Variable(ref name) => {
                 match self.scope()?.lookup(name) {
                     Some(symbol) => match symbol {
                         &Symbol::Var(VarSymbol::INTEGER(_)) => Ok(TypeSpec::INTEGER),
@@ -475,7 +470,7 @@ mod tests {
     #[test]
     fn visit_program() {
         let mut analyzer = SemanticAnalyzer::new();
-        let program = Program::Program(Variable::Var(String::from("test")), Block::Block(vec![], Compound::Statements(vec![])));
+        let program = Program(Variable(String::from("test")), Block(vec![], Compound(vec![])));
 
         assert_eq!(analyzer.visit_program(&program), Ok(()));
     }
@@ -483,7 +478,7 @@ mod tests {
     #[test]
     fn visit_block() {
         let mut analyzer = SemanticAnalyzer::new();
-        let block = Block::Block(vec![], Compound::Statements(vec![]));
+        let block = Block(vec![], Compound(vec![]));
 
         assert_eq!(analyzer.visit_block(&block), Ok(TypeSpec::UNIT));
     }
@@ -506,10 +501,10 @@ mod tests {
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.enter_scope(String::from("test_scope"));
 
-        let procedure_declaration = ProcedureDeclaration::Procedure(
+        let procedure_declaration = ProcedureDeclaration(
             String::from("test"),
-            FormalParameterList::FormalParameters(vec![]),
-            Block::Block(vec![], Compound::Statements(vec![]))
+            FormalParameterList(vec![]),
+            Block(vec![], Compound(vec![]))
         );
 
         assert_eq!(analyzer.visit_procedure_declaration(&procedure_declaration), Ok(()));
@@ -524,23 +519,23 @@ mod tests {
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.enter_scope(String::from("test_scope"));
 
-        let function_declaration = FunctionDeclaration::Function(
+        let function_declaration = FunctionDeclaration(
             String::from("test"),
-            FormalParameterList::FormalParameters(vec![]),
-            Block::Block(vec![
+            FormalParameterList(vec![]),
+            Block(vec![
                 // declare variable 'foobar' of type integer
                 Declarations::VariableDeclarations(vec![
-                    VariableDeclaration::Variables(
+                    VariableDeclaration(
                         vec![String::from("foobar")],
                         TypeSpec::INTEGER
                     )
                 ])
                 ],
-                Compound::Statements(vec![
+                Compound(vec![
                     Statement::Assignment(
                         // assign variable 'foobar' to integer 5 (makes return value of function an integer)
-                        Assignment::Assign(
-                            Variable::Var(String::from("foobar")),
+                        Assignment(
+                            Variable(String::from("foobar")),
                             Expr::Literal(Literal::Int(5))
                         )
                     )
@@ -559,11 +554,11 @@ mod tests {
     #[test]
     fn visit_formal_parameter_list() {
         let mut analyzer = SemanticAnalyzer::new();
-        let formal_parameter_list = FormalParameterList::FormalParameters(vec![
-            FormalParameters::Parameters(vec![String::from("a"), String::from("b")], TypeSpec::INTEGER),
-            FormalParameters::Parameters(vec![String::from("c"), String::from("d")], TypeSpec::REAL),
-            FormalParameters::Parameters(vec![String::from("e"), String::from("f")], TypeSpec::STRING),
-            FormalParameters::Parameters(vec![String::from("g"), String::from("h")], TypeSpec::BOOLEAN),
+        let formal_parameter_list = FormalParameterList(vec![
+            FormalParameters(vec![String::from("a"), String::from("b")], TypeSpec::INTEGER),
+            FormalParameters(vec![String::from("c"), String::from("d")], TypeSpec::REAL),
+            FormalParameters(vec![String::from("e"), String::from("f")], TypeSpec::STRING),
+            FormalParameters(vec![String::from("g"), String::from("h")], TypeSpec::BOOLEAN),
         ]);
 
         assert_eq!(
@@ -580,7 +575,7 @@ mod tests {
     #[test]
     fn visit_formal_parameters() {
         let mut analyzer = SemanticAnalyzer::new();
-        let formal_parameters = FormalParameters::Parameters(vec![String::from("a"), String::from("b")], TypeSpec::INTEGER);
+        let formal_parameters = FormalParameters(vec![String::from("a"), String::from("b")], TypeSpec::INTEGER);
 
         assert_eq!(
             analyzer.visit_formal_parameters(&formal_parameters),
@@ -592,7 +587,7 @@ mod tests {
     fn visit_variable_declaration() {
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.enter_scope(String::from("test_scope"));
-        let variable_declaration = VariableDeclaration::Variables(vec![String::from("a"), String::from("b")], TypeSpec::INTEGER);
+        let variable_declaration = VariableDeclaration(vec![String::from("a"), String::from("b")], TypeSpec::INTEGER);
 
         assert_eq!(analyzer.visit_variable_declaration(&variable_declaration), Ok(()));
         assert_eq!(analyzer.scope().unwrap().lookup(&String::from("a")), Some(&Symbol::Var(VarSymbol::INTEGER(String::from("a")))));
@@ -606,9 +601,9 @@ mod tests {
         analyzer.scope().unwrap().define(Symbol::Var(VarSymbol::INTEGER(String::from("foo"))));
         analyzer.scope().unwrap().define(Symbol::Var(VarSymbol::BOOLEAN(String::from("bar"))));
 
-        let compound = Compound::Statements(vec![
-            Statement::Assignment(Assignment::Assign(Variable::Var(String::from("foo")), Expr::Literal(Literal::Int(5)))),
-            Statement::Assignment(Assignment::Assign(Variable::Var(String::from("bar")), Expr::Literal(Literal::Boolean(true)))),
+        let compound = Compound(vec![
+            Statement::Assignment(Assignment(Variable(String::from("foo")), Expr::Literal(Literal::Int(5)))),
+            Statement::Assignment(Assignment(Variable(String::from("bar")), Expr::Literal(Literal::Boolean(true)))),
         ]);
 
         assert_eq!(analyzer.visit_compound(&compound), Ok(TypeSpec::BOOLEAN));
@@ -619,12 +614,12 @@ mod tests {
         let mut analyzer = SemanticAnalyzer::new();
         let if_statement = IfStatement::IfElseIf(             // if false then
             Expr::Literal(Literal::Boolean(false)),        //     begin
-            Compound::Statements(vec![]),                  //     end
+            Compound(vec![]),                              //     end
             Box::new(                                      // else if true then
                 IfStatement::IfElse(                       //     begin
                     Expr::Literal(Literal::Boolean(true)), //     end
-                    Compound::Statements(vec![]),          // else
-                    Compound::Statements(vec![])           //     begin
+                    Compound(vec![]),                      // else
+                    Compound(vec![])                       //     begin
                 )                                             //     end
             )
         );
@@ -637,8 +632,8 @@ mod tests {
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.enter_scope(String::from("test_scope"));
         analyzer.scope().unwrap().define(Symbol::Var(VarSymbol::INTEGER(String::from("test"))));
-        let assignment = Assignment::Assign(
-            Variable::Var(String::from("test")),
+        let assignment = Assignment(
+            Variable(String::from("test")),
             Expr::Literal(Literal::Int(5))
         );
 
@@ -662,9 +657,9 @@ mod tests {
                 )
             )
         );
-        let function_call = FunctionCall::Call(
-            Variable::Var(String::from("test")),
-            CallParameters::Parameters(
+        let function_call = FunctionCall(
+            Variable(String::from("test")),
+            CallParameters(
                 vec![
                     Expr::Literal(Literal::Int(5)),
                     Expr::Literal(Literal::Int(10)),
@@ -679,7 +674,7 @@ mod tests {
     #[test]
     fn visit_call_parameters() {
         let mut analyzer = SemanticAnalyzer::new();
-        let call_parameters = CallParameters::Parameters(
+        let call_parameters = CallParameters(
             vec![
                 Expr::Literal(Literal::Int(5)),
                 Expr::Literal(Literal::Int(10)),
@@ -696,7 +691,7 @@ mod tests {
     #[test]
     fn visit_unaryop_expr() {
         let mut analyzer = SemanticAnalyzer::new();
-        let unaryop_expr = UnaryOpExpr::UnaryOp(
+        let unaryop_expr = UnaryOpExpr(
                 UnaryOperator::Minus,
                 Expr::Literal(Literal::Float(5.0))
         );
@@ -707,7 +702,7 @@ mod tests {
     #[test]
     fn visit_binop_expr() {
         let mut analyzer = SemanticAnalyzer::new();
-        let binop_expr = BinaryOpExpr::BinaryOp(
+        let binop_expr = BinaryOpExpr(
             Expr::Literal(Literal::Int(5)),
             BinaryOperator::Multiply,
             Expr::Literal(Literal::Int(10))
@@ -719,7 +714,7 @@ mod tests {
     #[test]
     fn visit_group_expr() {
         let mut analyzer = SemanticAnalyzer::new();
-        let group_expr = GroupedExpr::Group(Expr::Literal(Literal::Boolean(true)));
+        let group_expr = GroupedExpr(Expr::Literal(Literal::Boolean(true)));
 
         assert_eq!(analyzer.visit_group(&group_expr), Ok(TypeSpec::BOOLEAN));
     }
@@ -737,7 +732,7 @@ mod tests {
         let mut analyzer = SemanticAnalyzer::new();
         analyzer.enter_scope(String::from("test_scope"));
         analyzer.scope().unwrap().define(Symbol::Var(VarSymbol::REAL(String::from("test"))));
-        let variable = Variable::Var(String::from("test"));
+        let variable = Variable(String::from("test"));
 
         assert_eq!(analyzer.visit_variable(&variable), Ok(TypeSpec::REAL));
     }

@@ -1,12 +1,8 @@
 #[derive(Debug, Clone, PartialEq)]
-pub enum Program {
-    Program(Variable, Block)
-}
+pub struct Program(pub Variable, pub Block);
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Block {
-    Block(Vec<Declarations>, Compound)
-}
+pub struct Block(pub Vec<Declarations>, pub Compound);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Declarations {
@@ -17,29 +13,19 @@ pub enum Declarations {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ProcedureDeclaration {
-    Procedure(String, FormalParameterList, Block)
-}
+pub struct ProcedureDeclaration(pub String, pub FormalParameterList, pub Block);
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum FunctionDeclaration {
-    Function(String, FormalParameterList, Block, TypeSpec)
-}
+pub struct FunctionDeclaration(pub String, pub FormalParameterList, pub Block, pub TypeSpec);
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum FormalParameterList {
-    FormalParameters(Vec<FormalParameters>)
-}
+pub struct FormalParameterList(pub Vec<FormalParameters>);
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum FormalParameters {
-    Parameters(Vec<String>, TypeSpec)
-}
+pub struct FormalParameters(pub Vec<String>, pub TypeSpec);
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum VariableDeclaration {
-    Variables(Vec<String>, TypeSpec)
-}
+pub struct VariableDeclaration(pub Vec<String>, pub TypeSpec);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeSpec {
@@ -51,9 +37,7 @@ pub enum TypeSpec {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Compound {
-    Statements(Vec<Statement>)
-}
+pub struct Compound(pub Vec<Statement>);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
@@ -64,9 +48,7 @@ pub enum Statement {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Assignment {
-    Assign(Variable, Expr)
-}
+pub struct Assignment(pub Variable, pub Expr);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum IfStatement {
@@ -76,19 +58,13 @@ pub enum IfStatement {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Variable {
-    Var(String)
-}
+pub struct Variable(pub String);
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum FunctionCall {
-    Call(Variable, CallParameters)
-}
+pub struct FunctionCall(pub Variable, pub CallParameters);
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum CallParameters {
-    Parameters(Vec<Expr>)
-}
+pub struct CallParameters(pub Vec<Expr>);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
@@ -101,9 +77,7 @@ pub enum Expr {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum UnaryOpExpr {
-    UnaryOp(UnaryOperator, Expr)
-}
+pub struct UnaryOpExpr(pub UnaryOperator, pub Expr);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
@@ -113,9 +87,7 @@ pub enum UnaryOperator {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum BinaryOpExpr {
-    BinaryOp(Expr, BinaryOperator, Expr)
-}
+pub struct BinaryOpExpr(pub Expr, pub BinaryOperator, pub Expr);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum BinaryOperator {
@@ -135,9 +107,7 @@ pub enum BinaryOperator {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum GroupedExpr {
-    Group(Expr)
-}
+pub struct GroupedExpr(pub Expr);
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Literal {
