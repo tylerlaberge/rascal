@@ -25,12 +25,12 @@ impl Symbol {
 
     pub fn name(&self) -> String {
         return match self {
-            &Symbol::Var(VarSymbol::INTEGER(ref name))
-            | &Symbol::Var(VarSymbol::REAL(ref name))
-            | &Symbol::Var(VarSymbol::STRING(ref name))
-            | &Symbol::Var(VarSymbol::BOOLEAN(ref name))
-            | &Symbol::Callable(CallableSymbol::Procedure(ref name, _))
-            | &Symbol::Callable(CallableSymbol::Function(ref name, _, _)) => name.clone()
+            Symbol::Var(VarSymbol::INTEGER(name))
+            | Symbol::Var(VarSymbol::REAL(name))
+            | Symbol::Var(VarSymbol::STRING(name))
+            | Symbol::Var(VarSymbol::BOOLEAN(name))
+            | Symbol::Callable(CallableSymbol::Procedure(name, _))
+            | Symbol::Callable(CallableSymbol::Function(name, _, _)) => name.clone()
         };
     }
 }

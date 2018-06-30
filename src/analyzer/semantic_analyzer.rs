@@ -69,7 +69,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_program(&mut self, node: &Program) -> Result<(), String> {
         return match node {
-            &Program(Variable(ref name), ref block) => {
+            Program(Variable(name), block) => {
                 self.enter_scope(name.to_owned());
                 self.init_built_ins()?;
                 self.visit_block(block)?;
@@ -82,7 +82,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_block(&mut self, node: &Block) -> Result<TypeSpec, String> {
         return match node {
-            &Block(ref declarations, ref compound) => {
+            Block(declarations, compound) => {
                 self.visit_declarations(declarations)?;
                 let return_type = self.visit_compound(compound)?;
 
@@ -94,22 +94,22 @@ impl SemanticAnalyzer {
     pub fn visit_declarations(&mut self, node: &Vec<Declarations>) -> Result<(), String> {
         for declarations in node {
             match declarations {
-                &Declarations::ProcedureDeclarations(ref procedure_declarations) => {
+                Declarations::ProcedureDeclarations(procedure_declarations) => {
                     for procedure_declaration in procedure_declarations {
                         self.visit_procedure_declaration(procedure_declaration)?;
                     }
                 },
-                &Declarations::FunctionDeclarations(ref function_declarations)   => {
+                Declarations::FunctionDeclarations(function_declarations)   => {
                     for function_declaration in function_declarations {
                         self.visit_function_declaration(function_declaration)?;
                     }
                 },
-                &Declarations::VariableDeclarations(ref variable_declarations)   => {
+                Declarations::VariableDeclarations(variable_declarations)   => {
                     for variable_declaration in variable_declarations {
                         self.visit_variable_declaration(variable_declaration)?;
                     }
                 },
-                &Declarations::Empty                                             => ()
+                Declarations::Empty                                         => ()
             };
         }
 
@@ -118,7 +118,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_procedure_declaration(&mut self, node: &ProcedureDeclaration) -> Result<(), String> {
         return match node {
-            &ProcedureDeclaration(ref name, ref parameter_list, ref block) => {
+            ProcedureDeclaration(name, parameter_list, block) => {
                 let parameters = self.visit_formal_parameter_list(parameter_list)?;
 
                 self.scope()?.define(Symbol::Callable(CallableSymbol::Procedure(name.to_owned(), parameters.to_vec())));
@@ -138,7 +138,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_function_declaration(&mut self, node: &FunctionDeclaration) -> Result<(), String> {
         return match node {
-            &FunctionDeclaration(ref name, ref parameter_list, ref block, ref return_type) => {
+            FunctionDeclaration(name, parameter_list, block, return_type) => {
                 let parameters = self.visit_formal_parameter_list(parameter_list)?;
 
                 self.scope()?.define(Symbol::Callable(CallableSymbol::Function(name.to_owned(), parameters.to_vec(), return_type.clone())));
@@ -149,11 +149,11 @@ impl SemanticAnalyzer {
                 }
 
                 match (self.visit_block(block)?, return_type) {
-                    (TypeSpec::STRING, &TypeSpec::STRING)   => Ok(()),
-                    (TypeSpec::INTEGER, &TypeSpec::INTEGER) => Ok(()),
-                    (TypeSpec::REAL, &TypeSpec::REAL)       => Ok(()),
-                    (TypeSpec::BOOLEAN, &TypeSpec::BOOLEAN) => Ok(()),
-                    (actual, expected)                      => Err(String::from(
+                    (TypeSpec::STRING, TypeSpec::STRING)   => Ok(()),
+                    (TypeSpec::INTEGER, TypeSpec::INTEGER) => Ok(()),
+                    (TypeSpec::REAL, TypeSpec::REAL)       => Ok(()),
+                    (TypeSpec::BOOLEAN, TypeSpec::BOOLEAN) => Ok(()),
+                    (actual, expected)                     => Err(String::from(
                         format!("Semantic Analyzer Error: Mismatching return types in function '{:?}'. Declared return type of {:?}, actual return type of {:?}", name, expected, actual)
                     ))
                 }?;
@@ -167,7 +167,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_formal_parameter_list(&mut self, node: &FormalParameterList) -> Result<Vec<VarSymbol>, String> {
         return match node {
-            &FormalParameterList(ref formal_parameters) => {
+            FormalParameterList(formal_parameters) => {
                 let mut vars: Vec<VarSymbol> = vec![];
                 for parameters in formal_parameters {
                     let mut other_vars = self.visit_formal_parameters(parameters)?;
@@ -182,12 +182,12 @@ impl SemanticAnalyzer {
         let mut vars: Vec<VarSymbol> = vec![];
 
         match node {
-            &FormalParameters(ref names, ref type_spec) => match type_spec {
-                &TypeSpec::INTEGER => Ok(names.iter().for_each(|name| vars.push(VarSymbol::INTEGER(name.to_owned())))),
-                &TypeSpec::REAL    => Ok(names.iter().for_each(|name| vars.push(VarSymbol::REAL(name.to_owned())))),
-                &TypeSpec::STRING  => Ok(names.iter().for_each(|name| vars.push(VarSymbol::STRING(name.to_owned())))),
-                &TypeSpec::BOOLEAN => Ok(names.iter().for_each(|name| vars.push(VarSymbol::BOOLEAN(name.to_owned())))),
-                &TypeSpec::UNIT    => Err(String::from("Internal Semantic Analyzer Error: Formal Parameter of type Unit"))
+            FormalParameters(names, type_spec) => match type_spec {
+                TypeSpec::INTEGER => Ok(names.iter().for_each(|name| vars.push(VarSymbol::INTEGER(name.to_owned())))),
+                TypeSpec::REAL    => Ok(names.iter().for_each(|name| vars.push(VarSymbol::REAL(name.to_owned())))),
+                TypeSpec::STRING  => Ok(names.iter().for_each(|name| vars.push(VarSymbol::STRING(name.to_owned())))),
+                TypeSpec::BOOLEAN => Ok(names.iter().for_each(|name| vars.push(VarSymbol::BOOLEAN(name.to_owned())))),
+                TypeSpec::UNIT    => Err(String::from("Internal Semantic Analyzer Error: Formal Parameter of type Unit"))
             }
         }?;
 
@@ -196,16 +196,16 @@ impl SemanticAnalyzer {
 
     pub fn visit_variable_declaration(&mut self, node: &VariableDeclaration) -> Result<(), String> {
         return match node {
-            &VariableDeclaration(ref names, ref typespec) => {
+            VariableDeclaration(names, typespec) => {
                 for name in names {
                     match self.scope()?.local_lookup(name) {
                         Some(_) => Err(String::from(format!("Semantic Analyzer Error: Variable declared more than once: {}", name))),
                         None    => match typespec {
-                            &TypeSpec::INTEGER => Ok(self.scope()?.define(Symbol::Var(VarSymbol::INTEGER(name.to_owned())))),
-                            &TypeSpec::REAL    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::REAL(name.to_owned())))),
-                            &TypeSpec::STRING  => Ok(self.scope()?.define(Symbol::Var(VarSymbol::STRING(name.to_owned())))),
-                            &TypeSpec::BOOLEAN => Ok(self.scope()?.define(Symbol::Var(VarSymbol::BOOLEAN(name.to_owned())))),
-                            &TypeSpec::UNIT    => Err(String::from("Internal Semantic Analyzer Error: Variable Declaration of type Unit"))
+                            TypeSpec::INTEGER => Ok(self.scope()?.define(Symbol::Var(VarSymbol::INTEGER(name.to_owned())))),
+                            TypeSpec::REAL    => Ok(self.scope()?.define(Symbol::Var(VarSymbol::REAL(name.to_owned())))),
+                            TypeSpec::STRING  => Ok(self.scope()?.define(Symbol::Var(VarSymbol::STRING(name.to_owned())))),
+                            TypeSpec::BOOLEAN => Ok(self.scope()?.define(Symbol::Var(VarSymbol::BOOLEAN(name.to_owned())))),
+                            TypeSpec::UNIT    => Err(String::from("Internal Semantic Analyzer Error: Variable Declaration of type Unit"))
                         }
                     }?;
                 }
@@ -217,7 +217,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_compound(&mut self, node: &Compound) -> Result<TypeSpec, String> {
         return match node {
-            &Compound(ref statements) => {
+            Compound(statements) => {
                 let mut last_type = TypeSpec::UNIT;
                 for statement in statements {
                     last_type = self.visit_statement(statement)?;
@@ -230,16 +230,16 @@ impl SemanticAnalyzer {
 
     pub fn visit_statement(&mut self, node: &Statement) -> Result<TypeSpec, String> {
         return match node {
-            &Statement::Compound(ref compound)          => self.visit_compound(compound),
-            &Statement::Assignment(ref assignment)      => self.visit_assignment(assignment),
-            &Statement::IfStatement(ref if_statement)   => self.visit_if_statement(if_statement),
-            &Statement::FunctionCall(ref function_call) => self.visit_function_call(function_call),
+            Statement::Compound(compound)          => self.visit_compound(compound),
+            Statement::Assignment(assignment)      => self.visit_assignment(assignment),
+            Statement::IfStatement(if_statement)   => self.visit_if_statement(if_statement),
+            Statement::FunctionCall(function_call) => self.visit_function_call(function_call),
         };
     }
 
     pub fn visit_if_statement(&mut self, node: &IfStatement) -> Result<TypeSpec, String> {
         return match node {
-            &IfStatement::If(ref expr, ref compound_statement) => {
+            IfStatement::If(expr, compound_statement) => {
                 match self.visit_expr(expr)? {
                     TypeSpec::BOOLEAN => Ok(()),
                     _                 => Err(String::from("Semantic Analyzer Error: If statement must use a boolean expression"))
@@ -248,7 +248,7 @@ impl SemanticAnalyzer {
                 self.visit_compound(compound_statement)?;
                 Ok(TypeSpec::UNIT)
             },
-            &IfStatement::IfElse(ref expr, ref if_compound_statement, ref else_compound_statement) => {
+            IfStatement::IfElse(expr, if_compound_statement, else_compound_statement) => {
                 match self.visit_expr(expr)? {
                     TypeSpec::BOOLEAN => Ok(()),
                     _                 => Err(String::from("Semantic Analyzer Error: If statement must use a boolean expression"))
@@ -258,7 +258,7 @@ impl SemanticAnalyzer {
                 self.visit_compound(else_compound_statement)?;
                 Ok(TypeSpec::UNIT)
             },
-            &IfStatement::IfElseIf(ref expr, ref if_compound_statement, ref else_if_statement) => {
+            IfStatement::IfElseIf(expr, if_compound_statement, else_if_statement) => {
                 match self.visit_expr(expr)? {
                     TypeSpec::BOOLEAN => Ok(()),
                     _                 => Err(String::from("Semantic Analyzer Error: If statement must use a boolean expression"))
@@ -273,7 +273,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_assignment(&mut self, node: &Assignment) -> Result<TypeSpec, String> {
         return match node {
-            &Assignment(Variable(ref name), ref expression) => {
+            Assignment(Variable(name), expression) => {
                 let symbol = match self.scope()?.lookup(name) {
                     Some(symbol)  => Ok(symbol.clone()),
                     None          => Err(String::from(format!("Semantic Analyzer Error: Variable {} was never defined", name)))
@@ -294,10 +294,10 @@ impl SemanticAnalyzer {
 
     pub fn visit_function_call(&mut self, node: &FunctionCall) -> Result<TypeSpec, String> {
         return match node {
-            &FunctionCall(Variable(ref name), ref parameters) => {
+            FunctionCall(Variable(name), parameters) => {
                 let callable =  match self.scope()?.lookup(name) {
-                    Some(&Symbol::Callable(ref callable)) => Ok(callable.clone()),
-                    _                                     => Err(String::from(format!("Semantic Analyzer Error: Unknown callable '{:?}'", name)))
+                    Some(Symbol::Callable(callable)) => Ok(callable.clone()),
+                    _                                => Err(String::from(format!("Semantic Analyzer Error: Unknown callable '{:?}'", name)))
                 }?;
                 let declared_params = match callable {
                     CallableSymbol::Procedure(_, ref declared_params)   => declared_params.to_vec(),
@@ -308,11 +308,11 @@ impl SemanticAnalyzer {
                 if declared_params.len() == given_params.len() {
                     for (declared, given) in declared_params.iter().zip(given_params.iter()) {
                         match (declared, given) {
-                            (&VarSymbol::INTEGER(_), &TypeSpec::INTEGER) => Ok(()),
-                            (&VarSymbol::REAL(_), &TypeSpec::REAL)       => Ok(()),
-                            (&VarSymbol::STRING(_), &TypeSpec::STRING)   => Ok(()),
-                            (&VarSymbol::BOOLEAN(_), &TypeSpec::BOOLEAN) => Ok(()),
-                            (expected, actual)                           => Err(String::from(format!("Semantic Analyzer Error: Callable expected parameter of type {:?}, but {:?} was given", expected, actual)))
+                            (VarSymbol::INTEGER(_), TypeSpec::INTEGER) => Ok(()),
+                            (VarSymbol::REAL(_), TypeSpec::REAL)       => Ok(()),
+                            (VarSymbol::STRING(_), TypeSpec::STRING)   => Ok(()),
+                            (VarSymbol::BOOLEAN(_), TypeSpec::BOOLEAN) => Ok(()),
+                            (expected, actual)                         => Err(String::from(format!("Semantic Analyzer Error: Callable expected parameter of type {:?}, but {:?} was given", expected, actual)))
                         }?;
                     }
                     match callable {
@@ -328,7 +328,7 @@ impl SemanticAnalyzer {
 
     pub fn visit_call_parameters(&mut self, node: &CallParameters) -> Result<Vec<TypeSpec>, String> {
         return match node {
-            &CallParameters(ref expressions) => {
+            CallParameters(expressions) => {
                 let mut parameters: Vec<TypeSpec> = vec![];
 
                 for expr in expressions.iter() {
@@ -342,25 +342,25 @@ impl SemanticAnalyzer {
 
     pub fn visit_expr(&mut self, node: &Expr) -> Result<TypeSpec, String> {
         return match node {
-            &Expr::UnaryOp(ref unaryop_expr)       => self.visit_unaryop(unaryop_expr),
-            &Expr::BinOp(ref binop_expr)           => self.visit_binop(binop_expr),
-            &Expr::Group(ref group_expr)           => self.visit_group(group_expr),
-            &Expr::Literal(ref literal)            => self.visit_literal(literal),
-            &Expr::Variable(ref variable)          => self.visit_variable(variable),
-            &Expr::FunctionCall(ref function_call) => self.visit_function_call(function_call)
+            Expr::UnaryOp(unaryop_expr)       => self.visit_unaryop(unaryop_expr),
+            Expr::BinOp(binop_expr)           => self.visit_binop(binop_expr),
+            Expr::Group(group_expr)           => self.visit_group(group_expr),
+            Expr::Literal(literal)            => self.visit_literal(literal),
+            Expr::Variable(variable)          => self.visit_variable(variable),
+            Expr::FunctionCall(function_call) => self.visit_function_call(function_call)
         };
     }
 
     pub fn visit_unaryop(&mut self, expr: &UnaryOpExpr) -> Result<TypeSpec, String> {
         return match expr {
-            &UnaryOpExpr(ref operator, ref unary_expr) =>
+            UnaryOpExpr(operator, unary_expr) =>
                 match (operator, self.visit_expr(unary_expr)?) {
-                    (&UnaryOperator::Plus, TypeSpec::INTEGER)  => Ok(TypeSpec::INTEGER),
-                    (&UnaryOperator::Minus, TypeSpec::INTEGER) => Ok(TypeSpec::INTEGER),
-                    (&UnaryOperator::Plus, TypeSpec::REAL)     => Ok(TypeSpec::REAL),
-                    (&UnaryOperator::Minus, TypeSpec::REAL)    => Ok(TypeSpec::REAL),
-                    (&UnaryOperator::Not, TypeSpec::BOOLEAN)   => Ok(TypeSpec::BOOLEAN),
-                    (operator, type_spec)                      => Err(String::from(
+                    (UnaryOperator::Plus, TypeSpec::INTEGER)  => Ok(TypeSpec::INTEGER),
+                    (UnaryOperator::Minus, TypeSpec::INTEGER) => Ok(TypeSpec::INTEGER),
+                    (UnaryOperator::Plus, TypeSpec::REAL)     => Ok(TypeSpec::REAL),
+                    (UnaryOperator::Minus, TypeSpec::REAL)    => Ok(TypeSpec::REAL),
+                    (UnaryOperator::Not, TypeSpec::BOOLEAN)   => Ok(TypeSpec::BOOLEAN),
+                    (operator, type_spec)                     => Err(String::from(
                         format!("Semantic Analyzer Error: Attempted to use unary operator {:?} with incompatible type {:?}", operator, type_spec)
                     ))
             }
@@ -369,33 +369,33 @@ impl SemanticAnalyzer {
 
     pub fn visit_binop(&mut self, expr: &BinaryOpExpr) -> Result<TypeSpec, String> {
         return match expr {
-            &BinaryOpExpr(ref left, ref operator, ref right) =>
+            BinaryOpExpr(left, operator, right) =>
                 match (self.visit_expr(left)?, operator, self.visit_expr(right)?) {
-                    (TypeSpec::INTEGER, &BinaryOperator::Plus, TypeSpec::INTEGER)               => Ok(TypeSpec::INTEGER),
-                    (TypeSpec::INTEGER, &BinaryOperator::Minus, TypeSpec::INTEGER)              => Ok(TypeSpec::INTEGER),
-                    (TypeSpec::INTEGER, &BinaryOperator::Multiply, TypeSpec::INTEGER)           => Ok(TypeSpec::INTEGER),
-                    (TypeSpec::INTEGER, &BinaryOperator::IntegerDivide, TypeSpec::INTEGER)      => Ok(TypeSpec::INTEGER),
-                    (TypeSpec::INTEGER, &BinaryOperator::LessThan, TypeSpec::INTEGER)           => Ok(TypeSpec::BOOLEAN),
-                    (TypeSpec::INTEGER, &BinaryOperator::LessThanOrEqual, TypeSpec::INTEGER)    => Ok(TypeSpec::BOOLEAN),
-                    (TypeSpec::INTEGER, &BinaryOperator::GreaterThan, TypeSpec::INTEGER)        => Ok(TypeSpec::BOOLEAN),
-                    (TypeSpec::INTEGER, &BinaryOperator::GreaterThanOrEqual, TypeSpec::INTEGER) => Ok(TypeSpec::BOOLEAN),
-                    (TypeSpec::INTEGER, &BinaryOperator::Equal, TypeSpec::INTEGER)              => Ok(TypeSpec::BOOLEAN),
-                    (TypeSpec::INTEGER, &BinaryOperator::NotEqual, TypeSpec::INTEGER)           => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::INTEGER, BinaryOperator::Plus, TypeSpec::INTEGER)               => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::INTEGER, BinaryOperator::Minus, TypeSpec::INTEGER)              => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::INTEGER, BinaryOperator::Multiply, TypeSpec::INTEGER)           => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::INTEGER, BinaryOperator::IntegerDivide, TypeSpec::INTEGER)      => Ok(TypeSpec::INTEGER),
+                    (TypeSpec::INTEGER, BinaryOperator::LessThan, TypeSpec::INTEGER)           => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::INTEGER, BinaryOperator::LessThanOrEqual, TypeSpec::INTEGER)    => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::INTEGER, BinaryOperator::GreaterThan, TypeSpec::INTEGER)        => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::INTEGER, BinaryOperator::GreaterThanOrEqual, TypeSpec::INTEGER) => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::INTEGER, BinaryOperator::Equal, TypeSpec::INTEGER)              => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::INTEGER, BinaryOperator::NotEqual, TypeSpec::INTEGER)           => Ok(TypeSpec::BOOLEAN),
 
-                    (TypeSpec::REAL, &BinaryOperator::Plus, TypeSpec::REAL)                     => Ok(TypeSpec::REAL),
-                    (TypeSpec::REAL, &BinaryOperator::Minus, TypeSpec::REAL)                    => Ok(TypeSpec::REAL),
-                    (TypeSpec::REAL, &BinaryOperator::Multiply, TypeSpec::REAL)                 => Ok(TypeSpec::REAL),
-                    (TypeSpec::REAL, &BinaryOperator::FloatDivide, TypeSpec::REAL)              => Ok(TypeSpec::REAL),
-                    (TypeSpec::REAL, &BinaryOperator::LessThan, TypeSpec::REAL)                 => Ok(TypeSpec::BOOLEAN),
-                    (TypeSpec::REAL, &BinaryOperator::LessThanOrEqual, TypeSpec::REAL)          => Ok(TypeSpec::BOOLEAN),
-                    (TypeSpec::REAL, &BinaryOperator::GreaterThan, TypeSpec::REAL)              => Ok(TypeSpec::BOOLEAN),
-                    (TypeSpec::REAL, &BinaryOperator::GreaterThanOrEqual, TypeSpec::REAL)       => Ok(TypeSpec::BOOLEAN),
-                    (TypeSpec::REAL, &BinaryOperator::Equal, TypeSpec::REAL)                    => Ok(TypeSpec::BOOLEAN),
-                    (TypeSpec::REAL, &BinaryOperator::NotEqual, TypeSpec::REAL)                 => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::REAL, BinaryOperator::Plus, TypeSpec::REAL)                     => Ok(TypeSpec::REAL),
+                    (TypeSpec::REAL, BinaryOperator::Minus, TypeSpec::REAL)                    => Ok(TypeSpec::REAL),
+                    (TypeSpec::REAL, BinaryOperator::Multiply, TypeSpec::REAL)                 => Ok(TypeSpec::REAL),
+                    (TypeSpec::REAL, BinaryOperator::FloatDivide, TypeSpec::REAL)              => Ok(TypeSpec::REAL),
+                    (TypeSpec::REAL, BinaryOperator::LessThan, TypeSpec::REAL)                 => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::REAL, BinaryOperator::LessThanOrEqual, TypeSpec::REAL)          => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::REAL, BinaryOperator::GreaterThan, TypeSpec::REAL)              => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::REAL, BinaryOperator::GreaterThanOrEqual, TypeSpec::REAL)       => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::REAL, BinaryOperator::Equal, TypeSpec::REAL)                    => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::REAL, BinaryOperator::NotEqual, TypeSpec::REAL)                 => Ok(TypeSpec::BOOLEAN),
 
-                    (TypeSpec::STRING, &BinaryOperator::Plus, TypeSpec::STRING)                 => Ok(TypeSpec::STRING),
-                    (TypeSpec::BOOLEAN, &BinaryOperator::And, TypeSpec::BOOLEAN)                => Ok(TypeSpec::BOOLEAN),
-                    (TypeSpec::BOOLEAN, &BinaryOperator::Or, TypeSpec::BOOLEAN)                 => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::STRING, BinaryOperator::Plus, TypeSpec::STRING)                 => Ok(TypeSpec::STRING),
+                    (TypeSpec::BOOLEAN, BinaryOperator::And, TypeSpec::BOOLEAN)                => Ok(TypeSpec::BOOLEAN),
+                    (TypeSpec::BOOLEAN, BinaryOperator::Or, TypeSpec::BOOLEAN)                 => Ok(TypeSpec::BOOLEAN),
 
                     (TypeSpec::INTEGER, operator, TypeSpec::INTEGER)                            => Err(String::from(format!("Semantic Analyzer Error: Binary operator {:?} is incompatible with {:?} types", operator, TypeSpec::INTEGER))),
                     (TypeSpec::REAL, operator, TypeSpec::REAL)                                  => Err(String::from(format!("Semantic Analyzer Error: Binary operator {:?} is incompatible with {:?} types", operator, TypeSpec::REAL))),
@@ -408,29 +408,29 @@ impl SemanticAnalyzer {
 
     fn visit_group(&mut self, expr: &GroupedExpr) -> Result<TypeSpec, String> {
         return match expr {
-            &GroupedExpr(ref grouped_expr) => self.visit_expr(grouped_expr)
+            GroupedExpr(grouped_expr) => self.visit_expr(grouped_expr)
         };
     }
 
     pub fn visit_literal(&mut self, expr: &Literal) -> Result<TypeSpec, String> {
         return match expr {
-            &Literal::Int(_)     => Ok(TypeSpec::INTEGER),
-            &Literal::Float(_)   => Ok(TypeSpec::REAL),
-            &Literal::String(_)  => Ok(TypeSpec::STRING),
-            &Literal::Boolean(_) => Ok(TypeSpec::BOOLEAN)
+            Literal::Int(_)     => Ok(TypeSpec::INTEGER),
+            Literal::Float(_)   => Ok(TypeSpec::REAL),
+            Literal::String(_)  => Ok(TypeSpec::STRING),
+            Literal::Boolean(_) => Ok(TypeSpec::BOOLEAN)
         }
     }
 
     pub fn visit_variable(&mut self, node: &Variable) -> Result<TypeSpec, String> {
         return match node {
-            &Variable(ref name) => {
+            Variable(name) => {
                 match self.scope()?.lookup(name) {
                     Some(symbol) => match symbol {
-                        &Symbol::Var(VarSymbol::INTEGER(_)) => Ok(TypeSpec::INTEGER),
-                        &Symbol::Var(VarSymbol::REAL(_))    => Ok(TypeSpec::REAL),
-                        &Symbol::Var(VarSymbol::STRING(_))  => Ok(TypeSpec::STRING),
-                        &Symbol::Var(VarSymbol::BOOLEAN(_)) => Ok(TypeSpec::BOOLEAN),
-                        &Symbol::Callable(ref callable)     => Err(String::from(format!("Semantic Analyzer Error: Attempted to use callable {:?} as a variable", callable)))
+                        Symbol::Var(VarSymbol::INTEGER(_)) => Ok(TypeSpec::INTEGER),
+                        Symbol::Var(VarSymbol::REAL(_))    => Ok(TypeSpec::REAL),
+                        Symbol::Var(VarSymbol::STRING(_))  => Ok(TypeSpec::STRING),
+                        Symbol::Var(VarSymbol::BOOLEAN(_)) => Ok(TypeSpec::BOOLEAN),
+                        Symbol::Callable(callable)         => Err(String::from(format!("Semantic Analyzer Error: Attempted to use callable {:?} as a variable", callable)))
                     },
                     None         => Err(String::from(format!("Semantic Analyzer Error: Unknown variable with name {}", name)))
                 }
@@ -458,7 +458,7 @@ impl SemanticAnalyzer {
     pub fn scope(&mut self) -> Result<&mut SymbolTable, String> {
         return match self.scope {
             Some(ref mut scope) => Ok(scope),
-            None                => Err(String::from("Internal Semantic Analyzer Error: Unknown Scope"))
+            None        => Err(String::from("Internal Semantic Analyzer Error: Unknown Scope"))
         };
     }
 }
