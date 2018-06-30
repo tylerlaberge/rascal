@@ -153,18 +153,18 @@ impl<'a> Lexer<'a> {
     fn comparison(&mut self) -> Result<Token, String> {
         return match self.source.current_char() {
             Some('<') => match self.source.peek() {
-                Some(&'=') => {
+                Some('=') => {
                     self.source.next();
                     Ok(Token::LESS_THAN_OR_EQUAL)
                 },
-                Some(&'>') => {
+                Some('>') => {
                     self.source.next();
                     Ok(Token::NOT_EQUAL)
                 },
                 _          => Ok(Token::LESS_THAN)
             },
             Some('>') => match self.source.peek() {
-                Some(&'=') => {
+                Some('=') => {
                     self.source.next();
                     Ok(Token::GREATER_THAN_OR_EQUAL)
                 },
@@ -181,7 +181,7 @@ impl<'a> Lexer<'a> {
             Some(character) if character.is_digit(10)    => self.integer(),
             Some(character) if character.is_alphabetic() => self.id(),
             Some(':')                                    => match self.source.peek() {
-                Some(&'=') => self.assign(),
+                Some('=') => self.assign(),
                 _          => Ok(Token::COLON)
             },
             Some('\'')                                   => self.string(),

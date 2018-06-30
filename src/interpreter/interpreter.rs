@@ -68,7 +68,7 @@ impl Interpreter {
 
     pub fn visit_program(&mut self, node: &Program) -> Result<(), String> {
         return match node {
-            &Program(Variable(ref name), ref block) => {
+            Program(Variable(name), block) => {
                 self.enter_scope(name.to_owned());
                 self.init_built_ins()?;
                 self.visit_block(block)?;
@@ -81,7 +81,7 @@ impl Interpreter {
 
     pub fn visit_block(&mut self, node: &Block) -> Result<Object, String> {
         return match node {
-            &Block(ref declarations, ref compound) => {
+            Block(declarations, compound) => {
                 self.visit_declarations(declarations)?;
                 let result = self.visit_compound(compound)?;
 
@@ -93,17 +93,17 @@ impl Interpreter {
     pub fn visit_declarations(&mut self, node: &Vec<Declarations>) -> Result<(), String> {
         for declarations in node {
             match declarations {
-                &Declarations::ProcedureDeclarations(ref procedure_declarations) => {
+                Declarations::ProcedureDeclarations(procedure_declarations) => {
                     for procedure_declaration in procedure_declarations {
                         self.visit_procedure_declaration(procedure_declaration)?;
                     }
                 },
-                &Declarations::FunctionDeclarations(ref function_declarations)   => {
+                Declarations::FunctionDeclarations(function_declarations)   => {
                     for function_declaration in function_declarations {
                         self.visit_function_declaration(function_declaration)?;
                     }
                 }
-                _                                                                => ()
+                _                                                           => ()
             };
         }
         return Ok(());
@@ -111,7 +111,7 @@ impl Interpreter {
 
     pub fn visit_procedure_declaration(&mut self, node: &ProcedureDeclaration) -> Result<(), String> {
         return match node {
-            &ProcedureDeclaration(ref name, ref parameter_list, ref block) => {
+            ProcedureDeclaration(name, parameter_list, block) => {
                 let parameters = self.visit_formal_parameter_list(parameter_list)?;
 
                 self.scope()?.set(name.to_owned(), Object::Procedure(name.to_owned(), parameters, block.clone()));
@@ -123,7 +123,7 @@ impl Interpreter {
 
     pub fn visit_function_declaration(&mut self, node: &FunctionDeclaration) -> Result<(), String> {
         return match node {
-            &FunctionDeclaration(ref name, ref parameter_list, ref block, ref return_type) => {
+            FunctionDeclaration(name, parameter_list, block, return_type) => {
                 let parameters = self.visit_formal_parameter_list(parameter_list)?;
 
                 self.scope()?.set(name.to_owned(), Object::Function(name.to_owned(), parameters, block.clone(), return_type.clone()));
@@ -135,7 +135,7 @@ impl Interpreter {
 
     pub fn visit_formal_parameter_list(&mut self, node: &FormalParameterList) -> Result<Vec<String>, String> {
         return match node {
-            &FormalParameterList(ref formal_parameters) => {
+            FormalParameterList(formal_parameters) => {
                 let mut var_names: Vec<String> = vec![];
                 for parameters in formal_parameters {
                     let mut other_var_names = self.visit_formal_parameters(parameters)?;
@@ -148,13 +148,13 @@ impl Interpreter {
 
     pub fn visit_formal_parameters(&mut self, node: &FormalParameters) -> Result<Vec<String>, String> {
         return match node {
-            &FormalParameters(ref names, _) => Ok(names.to_vec())
+            FormalParameters(names, _) => Ok(names.to_vec())
         };
     }
 
     pub fn visit_compound(&mut self, node: &Compound) -> Result<Object, String> {
         return match node {
-            &Compound(ref statements) => {
+            Compound(statements) => {
                 let mut result = Object::Unit;
                 for statement in statements {
                     result = self.visit_statement(statement)?;
@@ -167,25 +167,25 @@ impl Interpreter {
 
     pub fn visit_statement(&mut self, node: &Statement) -> Result<Object, String> {
         return match node {
-            &Statement::Compound(ref compound)          => self.visit_compound(compound),
-            &Statement::Assignment(ref assignment)      => self.visit_assignment(assignment),
-            &Statement::IfStatement(ref if_statement)   => self.visit_if_statement(if_statement),
-            &Statement::FunctionCall(ref function_call) => self.visit_function_call(function_call),
+            Statement::Compound(compound)          => self.visit_compound(compound),
+            Statement::Assignment(assignment)      => self.visit_assignment(assignment),
+            Statement::IfStatement(if_statement)   => self.visit_if_statement(if_statement),
+            Statement::FunctionCall(function_call) => self.visit_function_call(function_call),
         };
     }
 
     pub fn visit_if_statement(&mut self, node: &IfStatement) -> Result<Object, String> {
         return match node {
-            &IfStatement::If(ref expr, ref compound_statement) => match self.visit_expr(expr)? {
-                Object::Primitive(Primitive::Boolean(true)) => {
+            IfStatement::If(expr, compound_statement) => match self.visit_expr(expr)? {
+                Object::Primitive(Primitive::Boolean(true))  => {
                     self.visit_compound(compound_statement)?;
                     Ok(Object::Unit)
                 },
                 Object::Primitive(Primitive::Boolean(false)) => Ok(Object::Unit),
                 _                                            => Err(String::from("Internal Interpreter Error: If Statement evaluated to non-boolean type"))
             },
-            &IfStatement::IfElse(ref expr, ref if_compound_statement, ref else_compound_statement) => match self.visit_expr(expr)? {
-                Object::Primitive(Primitive::Boolean(true)) => {
+            IfStatement::IfElse(expr, if_compound_statement, else_compound_statement) => match self.visit_expr(expr)? {
+                Object::Primitive(Primitive::Boolean(true))  => {
                     self.visit_compound(if_compound_statement)?;
                     Ok(Object::Unit)
                 },
@@ -195,8 +195,8 @@ impl Interpreter {
                 },
                 _                                            => Err(String::from("Internal Interpreter Error: If Statement evaluated to non-boolean type"))
             },
-            &IfStatement::IfElseIf(ref expr, ref if_compound_statement, ref else_if_statement) => match self.visit_expr(expr)? {
-                Object::Primitive(Primitive::Boolean(true)) => {
+            IfStatement::IfElseIf(expr, if_compound_statement, else_if_statement) => match self.visit_expr(expr)? {
+                Object::Primitive(Primitive::Boolean(true))  => {
                     self.visit_compound(if_compound_statement)?;
                     Ok(Object::Unit)
                 },
@@ -208,7 +208,7 @@ impl Interpreter {
 
     pub fn visit_assignment(&mut self, node: &Assignment) -> Result<Object, String> {
         return match node {
-            &Assignment(Variable(ref name), ref expression) => {
+            Assignment(Variable(name), expression) => {
                 let val = self.visit_expr(expression)?;
                 self.scope()?.set(name.clone(), val.clone());
 
@@ -219,12 +219,12 @@ impl Interpreter {
 
     pub fn visit_function_call(&mut self, node: &FunctionCall) -> Result<Object, String> {
         return match node {
-            &FunctionCall(Variable(ref function_name), CallParameters(ref given_parameters)) => {
+            FunctionCall(Variable(function_name), CallParameters(given_parameters)) => {
                 let callable = match self.scope()?.get(function_name) {
-                    Some(&Object::Function(ref name, ref declared_params, ref block, ref return_type))  => Ok(Object::Function(name.clone(), declared_params.to_vec(), block.clone(), return_type.clone())),
-                    Some(&Object::Procedure(ref name, ref declared_params, ref block))                  => Ok(Object::Procedure(name.clone(), declared_params.to_vec(), block.clone())),
-                    Some(&Object::BuiltInFunction(ref func))                                            => Ok(Object::BuiltInFunction(func.clone())),
-                    _                                                                                   => Err(String::from(format!("Internal Interpreter Error: Expected a callable with the name '{:?}'", function_name)))
+                    Some(Object::Function(name, declared_params, block, return_type)) => Ok(Object::Function(name.clone(), declared_params.to_vec(), block.clone(), return_type.clone())),
+                    Some(Object::Procedure(name, declared_params, block))             => Ok(Object::Procedure(name.clone(), declared_params.to_vec(), block.clone())),
+                    Some(Object::BuiltInFunction(func))                               => Ok(Object::BuiltInFunction(func.clone())),
+                    _                                                                 => Err(String::from(format!("Internal Interpreter Error: Expected a callable with the name '{:?}'", function_name)))
                 }?;
 
                 match callable {
@@ -277,59 +277,59 @@ impl Interpreter {
 
     pub fn visit_expr(&mut self, node: &Expr) -> Result<Object, String> {
         return match node {
-            &Expr::UnaryOp(ref unaryop_expr)       => self.visit_unaryop(unaryop_expr),
-            &Expr::BinOp(ref binop_expr)           => self.visit_binop(binop_expr),
-            &Expr::Group(ref group_expr)           => self.visit_group(group_expr),
-            &Expr::Literal(ref literal)            => self.visit_literal(literal),
-            &Expr::Variable(ref variable)          => self.visit_variable(variable),
-            &Expr::FunctionCall(ref function_call) => self.visit_function_call(function_call)
+            Expr::UnaryOp(unaryop_expr)       => self.visit_unaryop(unaryop_expr),
+            Expr::BinOp(binop_expr)           => self.visit_binop(binop_expr),
+            Expr::Group(group_expr)           => self.visit_group(group_expr),
+            Expr::Literal(literal)            => self.visit_literal(literal),
+            Expr::Variable(variable)          => self.visit_variable(variable),
+            Expr::FunctionCall(function_call) => self.visit_function_call(function_call)
         };
     }
 
     pub fn visit_unaryop(&mut self, node: &UnaryOpExpr) -> Result<Object, String> {
         return match node {
-            &UnaryOpExpr(UnaryOperator::Plus, ref expr)  => Ok(self.visit_expr(expr)?.unary_plus()?),
-            &UnaryOpExpr(UnaryOperator::Minus, ref expr) => Ok(self.visit_expr(expr)?.unary_minus()?),
-            &UnaryOpExpr(UnaryOperator::Not, ref expr)   => Ok(self.visit_expr(expr)?.negate()?)
+            UnaryOpExpr(UnaryOperator::Plus, expr)  => Ok(self.visit_expr(expr)?.unary_plus()?),
+            UnaryOpExpr(UnaryOperator::Minus, expr) => Ok(self.visit_expr(expr)?.unary_minus()?),
+            UnaryOpExpr(UnaryOperator::Not, expr)   => Ok(self.visit_expr(expr)?.negate()?)
         };
     }
 
     pub fn visit_binop(&mut self, node: &BinaryOpExpr) -> Result<Object, String> {
         return match node {
-            &BinaryOpExpr(ref left, BinaryOperator::Plus, ref right)               => Ok(self.visit_expr(left)?.add(&self.visit_expr(right)?)?),
-            &BinaryOpExpr(ref left, BinaryOperator::Minus, ref right)              => Ok(self.visit_expr(left)?.subtract(&self.visit_expr(right)?)?),
-            &BinaryOpExpr(ref left, BinaryOperator::Multiply, ref right)           => Ok(self.visit_expr(left)?.multiply(&self.visit_expr(right)?)?),
-            &BinaryOpExpr(ref left, BinaryOperator::FloatDivide, ref right)        => Ok(self.visit_expr(left)?.float_divide(&self.visit_expr(right)?)?),
-            &BinaryOpExpr(ref left, BinaryOperator::IntegerDivide, ref right)      => Ok(self.visit_expr(left)?.integer_divide(&self.visit_expr(right)?)?),
-            &BinaryOpExpr(ref left, BinaryOperator::And, ref right)                => Ok(self.visit_expr(left)?.and(&self.visit_expr(right)?)?),
-            &BinaryOpExpr(ref left, BinaryOperator::Or, ref right)                 => Ok(self.visit_expr(left)?.or(&self.visit_expr(right)?)?),
-            &BinaryOpExpr(ref left, BinaryOperator::LessThan, ref right)           => Ok(self.visit_expr(left)?.less_than(&self.visit_expr(right)?)?),
-            &BinaryOpExpr(ref left, BinaryOperator::LessThanOrEqual, ref right)    => Ok(self.visit_expr(left)?.less_than_or_equal(&self.visit_expr(right)?)?),
-            &BinaryOpExpr(ref left, BinaryOperator::GreaterThan, ref right)        => Ok(self.visit_expr(left)?.greater_than(&self.visit_expr(right)?)?),
-            &BinaryOpExpr(ref left, BinaryOperator::GreaterThanOrEqual, ref right) => Ok(self.visit_expr(left)?.greater_than_or_equal(&self.visit_expr(right)?)?),
-            &BinaryOpExpr(ref left, BinaryOperator::Equal, ref right)              => Ok(self.visit_expr(left)?.equal(&self.visit_expr(right)?)?),
-            &BinaryOpExpr(ref left, BinaryOperator::NotEqual, ref right)           => Ok(self.visit_expr(left)?.not_equal(&self.visit_expr(right)?)?),
+            BinaryOpExpr(left, BinaryOperator::Plus, right)               => Ok(self.visit_expr(left)?.add(&self.visit_expr(right)?)?),
+            BinaryOpExpr(left, BinaryOperator::Minus, right)              => Ok(self.visit_expr(left)?.subtract(&self.visit_expr(right)?)?),
+            BinaryOpExpr(left, BinaryOperator::Multiply, right)           => Ok(self.visit_expr(left)?.multiply(&self.visit_expr(right)?)?),
+            BinaryOpExpr(left, BinaryOperator::FloatDivide, right)        => Ok(self.visit_expr(left)?.float_divide(&self.visit_expr(right)?)?),
+            BinaryOpExpr(left, BinaryOperator::IntegerDivide, right)      => Ok(self.visit_expr(left)?.integer_divide(&self.visit_expr(right)?)?),
+            BinaryOpExpr(left, BinaryOperator::And, right)                => Ok(self.visit_expr(left)?.and(&self.visit_expr(right)?)?),
+            BinaryOpExpr(left, BinaryOperator::Or, right)                 => Ok(self.visit_expr(left)?.or(&self.visit_expr(right)?)?),
+            BinaryOpExpr(left, BinaryOperator::LessThan, right)           => Ok(self.visit_expr(left)?.less_than(&self.visit_expr(right)?)?),
+            BinaryOpExpr(left, BinaryOperator::LessThanOrEqual, right)    => Ok(self.visit_expr(left)?.less_than_or_equal(&self.visit_expr(right)?)?),
+            BinaryOpExpr(left, BinaryOperator::GreaterThan, right)        => Ok(self.visit_expr(left)?.greater_than(&self.visit_expr(right)?)?),
+            BinaryOpExpr(left, BinaryOperator::GreaterThanOrEqual, right) => Ok(self.visit_expr(left)?.greater_than_or_equal(&self.visit_expr(right)?)?),
+            BinaryOpExpr(left, BinaryOperator::Equal, right)              => Ok(self.visit_expr(left)?.equal(&self.visit_expr(right)?)?),
+            BinaryOpExpr(left, BinaryOperator::NotEqual, right)           => Ok(self.visit_expr(left)?.not_equal(&self.visit_expr(right)?)?),
         };
     }
 
     pub fn visit_group(&mut self, node: &GroupedExpr) -> Result<Object, String> {
         return match node {
-            &GroupedExpr(ref expr) => self.visit_expr(expr)
+            GroupedExpr(expr) => self.visit_expr(expr)
         };
     }
 
     pub fn visit_literal(&mut self, node: &Literal) -> Result<Object, String> {
         return match node {
-            &Literal::Int(i)        => Ok(Object::Primitive(Primitive::Integer(i))),
-            &Literal::Float(f)      => Ok(Object::Primitive(Primitive::Float(f))),
-            &Literal::String(ref s) => Ok(Object::Primitive(Primitive::String(s.clone()))),
-            &Literal::Boolean(b)    => Ok(Object::Primitive(Primitive::Boolean(b)))
+            Literal::Int(i)     => Ok(Object::Primitive(Primitive::Integer(*i))),
+            Literal::Float(f)   => Ok(Object::Primitive(Primitive::Float(*f))),
+            Literal::String(s)  => Ok(Object::Primitive(Primitive::String(s.clone()))),
+            Literal::Boolean(b) => Ok(Object::Primitive(Primitive::Boolean(*b)))
         };
     }
 
     pub fn visit_variable(&mut self, node: &Variable) -> Result<Object, String> {
         return match node {
-            &Variable(ref name) => {
+            Variable(name) => {
                 match self.scope()?.get(name) {
                     Some(object) => Ok(object.clone()),
                     None         => Err(String::from(format!("Internal Interpreter Error: Unknown variable '{}'", name)))

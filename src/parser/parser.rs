@@ -61,36 +61,36 @@ impl<'a> Parser<'a> {
 
     fn get_prefix_parselet(token: &Token) -> Result<PrefixParselet, String> {
         return match token {
-            &Token::INTEGER_CONST(_)
-            | &Token::REAL_CONST(_)
-            | &Token::STRING_LITERAL(_ )
-            | &Token::BOOLEAN_CONST(_)   => Ok(PrefixParselet::Literal),
-            &Token::PLUS
-            | &Token::MINUS              => Ok(PrefixParselet::UnaryOperator(Precedence::UNARY_NUM as u32)),
-            &Token::NOT                  => Ok(PrefixParselet::UnaryOperator(Precedence::UNARY_BOOL as u32)),
-            &Token::LPAREN               => Ok(PrefixParselet::Grouping),
-            &Token::ID(_)                => Ok(PrefixParselet::Variable),
-            _                            => Err(String::from(format!("Expression Parse Error at token {:?}", token)))
+            Token::INTEGER_CONST(_)
+            | Token::REAL_CONST(_)
+            | Token::STRING_LITERAL(_ )
+            | Token::BOOLEAN_CONST(_)   => Ok(PrefixParselet::Literal),
+            Token::PLUS
+            | Token::MINUS              => Ok(PrefixParselet::UnaryOperator(Precedence::UNARY_NUM as u32)),
+            Token::NOT                  => Ok(PrefixParselet::UnaryOperator(Precedence::UNARY_BOOL as u32)),
+            Token::LPAREN               => Ok(PrefixParselet::Grouping),
+            Token::ID(_)                => Ok(PrefixParselet::Variable),
+            _                           => Err(String::from(format!("Expression Parse Error at token {:?}", token)))
         };
     }
 
     fn get_infix_parselet(token: &Token) -> Result<InfixParselet, String> {
         return match token {
-            &Token::PLUS
-            | &Token::MINUS                 => Ok(InfixParselet::BinaryOperator(Precedence::SUM as u32)),
-            &Token::MULTIPLY
-            | &Token::INTEGER_DIV
-            | &Token::FLOAT_DIV             => Ok(InfixParselet::BinaryOperator(Precedence::PRODUCT as u32)),
-            &Token::AND
-            | &Token::OR                    => Ok(InfixParselet::BinaryOperator(Precedence::BINARY_BOOL as u32)),
-            &Token::LESS_THAN
-            | &Token::LESS_THAN_OR_EQUAL
-            | &Token::GREATER_THAN
-            | &Token::GREATER_THAN_OR_EQUAL
-            | &Token::EQUAL
-            | &Token::NOT_EQUAL             => Ok(InfixParselet::BinaryOperator(Precedence::COMPARISON as u32)),
-            &Token::LPAREN                  => Ok(InfixParselet::FunctionCall(Precedence::CALL as u32)),
-            _                               => Err(String::from(format!("Expression Parse Error at token {:?}", token)))
+            Token::PLUS
+            | Token::MINUS                 => Ok(InfixParselet::BinaryOperator(Precedence::SUM as u32)),
+            Token::MULTIPLY
+            | Token::INTEGER_DIV
+            | Token::FLOAT_DIV             => Ok(InfixParselet::BinaryOperator(Precedence::PRODUCT as u32)),
+            Token::AND
+            | Token::OR                    => Ok(InfixParselet::BinaryOperator(Precedence::BINARY_BOOL as u32)),
+            Token::LESS_THAN
+            | Token::LESS_THAN_OR_EQUAL
+            | Token::GREATER_THAN
+            | Token::GREATER_THAN_OR_EQUAL
+            | Token::EQUAL
+            | Token::NOT_EQUAL             => Ok(InfixParselet::BinaryOperator(Precedence::COMPARISON as u32)),
+            Token::LPAREN                  => Ok(InfixParselet::FunctionCall(Precedence::CALL as u32)),
+            _                              => Err(String::from(format!("Expression Parse Error at token {:?}", token)))
         };
     }
 
@@ -158,9 +158,9 @@ impl<'a> Parser<'a> {
 
         loop {
             match self.lexer.peek() {
-                Some(&Token::PROCEDURE) => procedure_declarations.push(self.procedure_declaration()?),
-                Some(&Token::FUNCTION)  => function_declarations.push(self.function_declaration()?),
-                _                       => break
+                Some(Token::PROCEDURE) => procedure_declarations.push(self.procedure_declaration()?),
+                Some(Token::FUNCTION)  => function_declarations.push(self.function_declaration()?),
+                _                      => break
             }
         }
 
@@ -193,7 +193,7 @@ impl<'a> Parser<'a> {
             _                     => Err(String::from(format!("Variable Declaration Parse Error: Expected id token")))
         }?;
 
-        while let Some(&Token::COMMA) = self.lexer.peek() {
+        while let Some(Token::COMMA) = self.lexer.peek() {
             self.lexer.next(); // eat the comma
 
             match self.lexer.next() {
@@ -236,7 +236,7 @@ impl<'a> Parser<'a> {
             _                                               => Err(String::from(format!("Procedure Declaration Parse Error: Expected {:?} <id>", Token::PROCEDURE)))
         }?;
         let parameters = match self.lexer.peek() {
-            Some(&Token::LPAREN) =>  {
+            Some(Token::LPAREN) =>  {
                 self.lexer.next(); // eat the LPAREN
 
                 match (self.formal_parameter_list()?, self.lexer.next()) {
@@ -244,7 +244,7 @@ impl<'a> Parser<'a> {
                     (formal_parameter_list, _)                   => Err(format!("Procedure Declaration Parse Error: Expected {:?} after {:?}", Token::RPAREN, formal_parameter_list))
                 }
             }
-            _                    => Ok(FormalParameterList(vec![]))
+            _                   => Ok(FormalParameterList(vec![]))
         }?;
         let block = match self.lexer.next() {
             Some(Token::SEMI) => self.block(),
@@ -287,13 +287,13 @@ impl<'a> Parser<'a> {
     fn formal_parameter_list(&mut self) -> Result<FormalParameterList, String> {
         let mut parameters: Vec<FormalParameters> = vec![];
 
-        if let Some(&Token::ID(_)) = self.lexer.peek() {
+        if let Some(Token::ID(_)) = self.lexer.peek() {
             loop {
                 parameters.push(self.formal_parameters()?);
 
                 match self.lexer.peek() {
-                    Some(&Token::SEMI) => self.lexer.next(),
-                    _                  => break
+                    Some(Token::SEMI) => self.lexer.next(),
+                    _                 => break
                 };
             }
         }
@@ -315,7 +315,7 @@ impl<'a> Parser<'a> {
             token                 => Err(String::from(format!("Formal Parameters Parse Error: Expected id token, got token {:?}", token)))
         }?;
 
-        while let Some(&Token::COMMA) = self.lexer.peek() {
+        while let Some(Token::COMMA) = self.lexer.peek() {
             self.lexer.next(); // eat the comma
 
             match self.lexer.next() {
@@ -345,7 +345,7 @@ impl<'a> Parser<'a> {
         }?;
 
         let mut statements: Vec<Statement> = vec![];
-        while !matches!(self.lexer.peek(), Some(&Token::END)) {
+        while !matches!(self.lexer.peek(), Some(Token::END)) {
             statements.push(self.statement()?);
         }
         self.lexer.next(); // eat the 'END' token
@@ -358,14 +358,14 @@ impl<'a> Parser<'a> {
     /// </pre>
     fn statement(&mut self) -> Result<Statement, String> {
         return match self.lexer.peek() {
-            Some(&Token::BEGIN) => Ok(Statement::Compound(self.compound_statement()?)),
-            Some(&Token::ID(_)) => match self.lexer.peek_ahead(1) {
-                Some(&Token::LPAREN) => Ok(Statement::FunctionCall(self.function_call()?)),
-                Some(&Token::ASSIGN) => Ok(Statement::Assignment(self.assignment_statement()?)),
-                _                    => Err(String::from("Statement Parse Error: Expected assignment statement or function call after id token"))
+            Some(Token::BEGIN) => Ok(Statement::Compound(self.compound_statement()?)),
+            Some(Token::ID(_)) => match self.lexer.peek_ahead(1) {
+                Some(Token::LPAREN) => Ok(Statement::FunctionCall(self.function_call()?)),
+                Some(Token::ASSIGN) => Ok(Statement::Assignment(self.assignment_statement()?)),
+                _                   => Err(String::from("Statement Parse Error: Expected assignment statement or function call after id token"))
             },
-            Some(&Token::IF)    => Ok(Statement::IfStatement(self.if_statement()?)),
-            _                   => Err(String::from("Statement Parse Error: Expected compound statement, function call, assignment statement, or if statement"))
+            Some(Token::IF)    => Ok(Statement::IfStatement(self.if_statement()?)),
+            _                  => Err(String::from("Statement Parse Error: Expected compound statement, function call, assignment statement, or if statement"))
         };
     }
 
@@ -382,14 +382,14 @@ impl<'a> Parser<'a> {
         }?;
 
         return match self.lexer.peek() {
-            Some(&Token::ELSE) => {
+            Some(Token::ELSE) => {
                 self.lexer.next(); // eat the 'else' token
                 match self.lexer.peek() {
-                    Some(&Token::IF) => Ok(IfStatement::IfElseIf(if_expr, if_compound, Box::new(self.if_statement()?))),
-                    _                => Ok(IfStatement::IfElse(if_expr, if_compound, self.compound_statement()?))
+                    Some(Token::IF) => Ok(IfStatement::IfElseIf(if_expr, if_compound, Box::new(self.if_statement()?))),
+                    _               => Ok(IfStatement::IfElse(if_expr, if_compound, self.compound_statement()?))
                 }
             },
-            _                  => Ok(IfStatement::If(if_expr, if_compound))
+            _                 => Ok(IfStatement::If(if_expr, if_compound))
         };
     }
 

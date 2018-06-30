@@ -4,11 +4,13 @@ use std::env;
 use std::io::Read;
 use std::fs::File;
 
-fn main() {
-    let filename = get_file_name().unwrap();
-    let source = read_source_file(filename.as_str()).unwrap();
+fn main() -> Result<(), String> {
+    let filename = get_file_name()?;
+    let source = read_source_file(filename.as_str())?;
 
     rascal::interpret(source);
+
+    Ok(())
 }
 
 fn get_file_name() -> Result<String, String> {
